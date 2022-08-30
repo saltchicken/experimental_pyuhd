@@ -15,6 +15,14 @@ NUM_RECV_FRAMES = 2040
 
 MAX_QUEUE_SIZE = 1 
 
+class Index:
+    def __init__(self, quit):
+        self.quit = quit
+    def start(self, event):
+        self.quit.set()
+    def stop(self, event):
+        self.quit.set()
+
 def run_usrp(q, quit):
     usrp = uhd.usrp.MultiUSRP()
     usrp.set_rx_rate(SAMPLE_RATE, 0)
@@ -84,8 +92,16 @@ def update(frame):
         #print("error with update in plot_processing")
         return ln,
 
+q = multiprocessing.Queue( MAX_QUEUE_SIZE )
+quit = multiprocessing.Event()
+
 fig, ax = plt.subplots()
 ln, = plt.plot([], [], 'r')
+
+callback = Index(quit)
+axstop = plt.axes([0.7, 0.0, 0.1, 0.075])
+bstop = Button(axstop, 'Stop')
+bstop.on_clicked(callback.stop)
 
 xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
 ax.set_xlim(min(xf), max(xf))
@@ -93,8 +109,6 @@ ax.set_ylim(-1, 6)
 
 ani = FuncAnimation(fig, update, frames=None, interval=0, blit=True)
 
-q = multiprocessing.Queue( MAX_QUEUE_SIZE )
-quit = multiprocessing.Event()
 
 run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit))
 run_usrp_process.start()
