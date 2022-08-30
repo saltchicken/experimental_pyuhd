@@ -2,7 +2,7 @@ import uhd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from matplotlib.widgets import Button
+from matplotlib.widgets import Button, TextBox
 from scipy.fft import fft, fftfreq, fftshift
 from scipy import signal
 import time, multiprocessing
@@ -10,20 +10,23 @@ import time, multiprocessing
 SAMPLE_RATE = 20e6
 NUM_SAMPS = 200
 CENTER_FREQ = 104.5e6
-GAIN = 50
+GAIN = 10
 NUM_RECV_FRAMES = 2040
 
 MAX_QUEUE_SIZE = 1 
 
 class Index:
-    def __init__(self, quit):
+    def __init__(self, quit, update_params):
         self.quit = quit
+        self.update_params = update_params
     def start(self, event):
         self.quit.set()
     def stop(self, event):
         self.quit.set()
-
-def run_usrp(q, quit):
+    def change_freq(self, expression):
+        print("Do something", expression)
+        self.update_params.put(expression)
+def run_usrp(q, quit, update_params):
     usrp = uhd.usrp.MultiUSRP()
     usrp.set_rx_rate(SAMPLE_RATE, 0)
     usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(CENTER_FREQ), 0)
@@ -45,15 +48,20 @@ def run_usrp(q, quit):
     QUEUE_WRITTEN = 0
     
     while quit.is_set() is False:
-        for i in range(50):
-            streamer.recv(recv_buffer, metadata)
-            samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
-        
-        if q.qsize() < MAX_QUEUE_SIZE:
-            QUEUE_WRITTEN += 1
-            q.put_nowait(samples)
+        if not update_params.empty():
+            param = update_params.get()
+            print(param)
+            usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(float(param)), 0)
         else:
-            QUEUE_FULL += 1
+            for i in range(50):
+                streamer.recv(recv_buffer, metadata)
+                samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
+            
+            if q.qsize() < MAX_QUEUE_SIZE:
+                QUEUE_WRITTEN += 1
+                q.put_nowait(samples)
+            else:
+                QUEUE_FULL += 1
 
     print("Queue was full: ", QUEUE_FULL)
     print("Queue was written: ", QUEUE_WRITTEN)
@@ -94,23 +102,29 @@ def update(frame):
 
 q = multiprocessing.Queue( MAX_QUEUE_SIZE )
 quit = multiprocessing.Event()
+update_params = multiprocessing.Queue(1)
+
 
 fig, ax = plt.subplots()
 ln, = plt.plot([], [], 'r')
 
-callback = Index(quit)
+callback = Index(quit, update_params)
 axstop = plt.axes([0.7, 0.0, 0.1, 0.075])
 bstop = Button(axstop, 'Stop')
 bstop.on_clicked(callback.stop)
+
+axtext = plt.axes([0.1, 0.05, 0.8, 0.075])
+text_box = TextBox(axtext, "Center_Freq", textalignment="center")
+text_box.on_submit(callback.change_freq)
 
 xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
 ax.set_xlim(min(xf), max(xf))
 ax.set_ylim(-1, 6)
 
-ani = FuncAnimation(fig, update, frames=None, interval=0, blit=True)
+ani = FuncAnimation(fig, update, frames=None, interval=0, blit=False)
 
 
-run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit))
+run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
 run_usrp_process.start()
 
 plt.show()
