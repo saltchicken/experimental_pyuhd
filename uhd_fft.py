@@ -8,9 +8,9 @@ from scipy import signal
 import time, multiprocessing
 
 SAMPLE_RATE = 20e6
-NUM_SAMPS = 200
+NUM_SAMPS = 400
 CENTER_FREQ = 104.5e6
-GAIN = 10
+GAIN = 50
 NUM_RECV_FRAMES = 2040
 
 MAX_QUEUE_SIZE = 1 
@@ -85,16 +85,15 @@ def update(frame):
 
         data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
         #data = data.mean(axis=0)
-        plot_data = np.zeros([data.size//NUM_SAMPS, NUM_SAMPS], dtype=np.complex64)
         for i in range(data.size//NUM_SAMPS):
             yf2 = fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
             yf2 = fftshift(yf2)
             yf2 = np.abs(yf2)
-            std = np.std(yf2)
-            yf2 = np.clip(yf2, std / 30, std * 100)
-            plot_data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = yf2
-        plot_data = plot_data.mean(axis=0)
-        ln.set_data(xf, plot_data)
+            #std = np.std(yf2)
+            #yf2 = np.clip(yf2, std / 30, std * 100)
+            data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = yf2
+        data = data.mean(axis=0)
+        ln.set_data(xf, data)
         return ln,
     except:
         #print("error with update in plot_processing")
