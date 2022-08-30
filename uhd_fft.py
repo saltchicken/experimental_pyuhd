@@ -2,12 +2,13 @@ import uhd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Button
 from scipy.fft import fft, fftfreq, fftshift
 from scipy import signal
 import time, multiprocessing
 
 SAMPLE_RATE = 20e6
-NUM_SAMPS = 400
+NUM_SAMPS = 200
 CENTER_FREQ = 104.5e6
 GAIN = 50
 NUM_RECV_FRAMES = 2040
@@ -58,12 +59,26 @@ def update(frame):
             data = q.get()
             data = data.astype("complex64")
         window = signal.windows.hann(NUM_SAMPS)
-        yf = fft(data[-NUM_SAMPS:] * window)
-        yf = fftshift(yf)
-        yf = np.abs(yf)
-        std = np.std(yf)
-        yf = np.clip(yf, std / 3, std * 100)
-        ln.set_data(xf, yf)
+
+        # yf = fft(data[-NUM_SAMPS:] * window)
+        # yf = fftshift(yf)
+        # yf = np.abs(yf)
+        # std = np.std(yf)
+        # yf = np.clip(yf, std / 30, std * 100)
+        
+
+        data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
+        #data = data.mean(axis=0)
+        plot_data = np.zeros([data.size//NUM_SAMPS, NUM_SAMPS], dtype=np.complex64)
+        for i in range(data.size//NUM_SAMPS):
+            yf2 = fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
+            yf2 = fftshift(yf2)
+            yf2 = np.abs(yf2)
+            std = np.std(yf2)
+            yf2 = np.clip(yf2, std / 30, std * 100)
+            plot_data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = yf2
+        plot_data = plot_data.mean(axis=0)
+        ln.set_data(xf, plot_data)
         return ln,
     except:
         #print("error with update in plot_processing")
