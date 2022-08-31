@@ -108,16 +108,16 @@ quit = multiprocessing.Event()
 update_params = multiprocessing.Queue(1)
 
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(12, 10))
 ln = plt.plot([], [], 'r')[0]
 peak_graph = plt.plot([], [], 'x')[0]
 
 callback = Index(quit, update_params)
-axstop = plt.axes([0.7, 0.0, 0.1, 0.075])
+axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
 bstop = Button(axstop, 'Stop')
 bstop.on_clicked(callback.stop)
 
-axtext = plt.axes([0.1, 0.05, 0.8, 0.075])
+axtext = plt.axes([0.1, 0.05, 0.3, 0.02])
 text_box = TextBox(axtext, "Center_Freq", textalignment="center")
 text_box.on_submit(callback.change_freq)
 
