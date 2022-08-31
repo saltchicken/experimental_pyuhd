@@ -5,12 +5,13 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, TextBox
 from scipy.fft import fft, fftfreq, fftshift
 from scipy import signal
+from scipy.signal import find_peaks, peak_widths
 import time, multiprocessing
 
 SAMPLE_RATE = 20e6
 NUM_SAMPS = 400
 CENTER_FREQ = 104.5e6
-GAIN = 50
+GAIN = 10
 NUM_RECV_FRAMES = 2040
 
 MAX_QUEUE_SIZE = 1 
@@ -24,8 +25,8 @@ class Index:
     def stop(self, event):
         self.quit.set()
     def change_freq(self, expression):
-        print("Do something", expression)
         self.update_params.put(expression)
+
 def run_usrp(q, quit, update_params):
     usrp = uhd.usrp.MultiUSRP()
     usrp.set_rx_rate(SAMPLE_RATE, 0)
@@ -93,11 +94,14 @@ def update(frame):
             #yf2 = np.clip(yf2, std / 30, std * 100)
             data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = yf2
         data = data.mean(axis=0)
+        peaks, _ = find_peaks(data, threshold = 0.5)
+        results_half = peak_widths(data, peaks, rel_height=0.5)
         ln.set_data(xf, data)
-        return ln,
+        peak_graph.set_data(xf[peaks], data[peaks])
+        return ln, peak_graph
     except:
         #print("error with update in plot_processing")
-        return ln,
+        return ln, peak_graph
 
 q = multiprocessing.Queue( MAX_QUEUE_SIZE )
 quit = multiprocessing.Event()
@@ -105,7 +109,8 @@ update_params = multiprocessing.Queue(1)
 
 
 fig, ax = plt.subplots()
-ln, = plt.plot([], [], 'r')
+ln = plt.plot([], [], 'r')[0]
+peak_graph = plt.plot([], [], 'x')[0]
 
 callback = Index(quit, update_params)
 axstop = plt.axes([0.7, 0.0, 0.1, 0.075])
