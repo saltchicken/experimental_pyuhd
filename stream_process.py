@@ -32,8 +32,10 @@ def run_usrp(q, quit, update_params):
     while quit.is_set() is False:
         if not update_params.empty():
             param = update_params.get()
-            print(param)
-            usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(float(param)), 0)
+            if param[0] == "freq":
+                usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(float(param[1])), 0)
+            elif param[0] == "gain":
+                usrp.set_rx_gain(param[1], 0)
         else:
             for i in range(50):
                 streamer.recv(recv_buffer, metadata)

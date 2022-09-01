@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from matplotlib.widgets import Button, TextBox
+from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
 import time, multiprocessing
 
@@ -22,8 +22,11 @@ class Index:
     def stop(self, event):
         self.quit.set()
 
-    def change_freq(self, expression):
-        self.update_params.put(expression)
+    def change_freq(self, freq):
+        self.update_params.put(("freq", freq))
+
+    def change_gain(self, gain):
+        self.update_params.put(("gain", gain))
 
 def init():
     ax.set_xlim(min(xf), max(xf))
@@ -67,6 +70,10 @@ bstop.on_clicked(callback.stop)
 axtext = plt.axes([0.1, 0.05, 0.3, 0.02])
 text_box = TextBox(axtext, "Center_Freq", textalignment="center")
 text_box.on_submit(callback.change_freq)
+
+axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
+gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=10, orientation="vertical")
+gain_slider.on_changed(callback.change_gain)
 
 xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
 
