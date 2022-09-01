@@ -4,7 +4,7 @@ from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
 import time, multiprocessing
 
-from stream_process import run_usrp, SAMPLE_RATE, CENTER_FREQ, MAX_QUEUE_SIZE
+from stream_process import run_usrp, run_soapy, SAMPLE_RATE, CENTER_FREQ, MAX_QUEUE_SIZE
 from utils import get_fft, fftshift, fftfreq
 
 NUM_SAMPS = 400

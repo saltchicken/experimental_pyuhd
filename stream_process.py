@@ -1,5 +1,7 @@
 import uhd
 import numpy as np
+import SoapySDR
+from SoapySDR import * #SOAPY_SDR_ constants
 
 SAMPLE_RATE = 20e6
 CENTER_FREQ = 104.5e6
@@ -52,3 +54,45 @@ def run_usrp(q, quit, update_params):
     stream_cmd = uhd.types.StreamCMD(uhd.types.StreamMode.stop_cont)
     streamer.issue_stream_cmd(stream_cmd)
     print("Cleaned usrp")
+
+
+def run_soapy(q, quit, update_params, device = "hackrf"):
+    args = dict(driver="hackrf")
+    sdr = SoapySDR.Device(args)
+
+    sdr.setSampleRate(SOAPY_SDR_RX, 0, SAMPLE_RATE)
+    sdr.setFrequency(SOAPY_SDR_RX, 0, CENTER_FREQ)
+    #sdr.setGain(SOAPY_SDR_RX, 0, GAIN)
+
+    rxStream = sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32)
+    sdr.activateStream(rxStream)
+
+    recv_buffer = np.zeros(NUM_RECV_FRAMES, dtype=np.complex64)
+    samples = np.zeros(NUM_RECV_FRAMES * 50, dtype=np.complex64)
+
+    QUEUE_FULL = 0
+    QUEUE_WRITTEN = 0
+
+    while quit.is_set() is False:
+        if not update_params.empty():
+            param = update_params.get()
+            if param[0] == "freq":
+                sdr.setFrequency(SOAPY_SDR_RX, 0, float(param[1]))
+            elif param[0] == "gain":
+                sdr.setGain(SOAPY_SDR_RX, 0, param[1])
+        else:
+            for i in range(50):
+                sr = sdr.readStream(rxStream, [recv_buffer], len(recv_buffer))
+                samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
+
+            if q.qsize() < MAX_QUEUE_SIZE:
+                QUEUE_WRITTEN += 1
+                q.put_nowait(samples)
+            else:
+                QUEUE_FULL += 1
+
+    print("Queue was full: ", QUEUE_FULL)
+    print("Queue was written: ", QUEUE_WRITTEN)
+    sdr.deactivateStream(rxStream) #stop streaming
+    sdr.closeStream(rxStream)
+    print("Cleaned soapy device")
