@@ -46,7 +46,7 @@ def update(frame):
             #yf2 = np.clip(yf2, std / 30, std * 100)
             data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = yf2
         data = data.mean(axis=0)
-        peaks, _ = find_peaks(data, threshold = 0.5)
+        peaks, _ = find_peaks(data, height=1)
         # results_half = peak_widths(data, peaks, rel_height=0.5)
         ln.set_data(xf, data)
         peak_graph.set_data(xf[peaks], data[peaks])
