@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+plt.style.use(plt.style.available[3])
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
@@ -8,6 +9,22 @@ from stream_process import run_usrp, run_soapy, SAMPLE_RATE, CENTER_FREQ, MAX_QU
 from utils import get_fft, fftshift, fftfreq
 
 NUM_SAMPS = 1600
+
+def fft_process(q):
+    time.sleep(4)
+    for j in range(100000):
+        try:
+            while not q.empty():
+                data = q.get()
+            data = data.astype("complex64")
+            data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
+            for i in range(data.size//NUM_SAMPS):
+                data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = get_fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
+            data = data.mean(axis=0)
+            output_q.put_nowait(data)
+        except:
+            pass
+
 
 class Index:
 
@@ -34,18 +51,10 @@ def init():
 
 def update(frame):
     try:
-        while not q.empty(): 
-            data = q.get()
+        while not output_q.empty(): 
+            data = output_q.get()
         data = data.astype("complex64")
         # yf = get_fft(data[-NUM_SAMPS:] * window)
-
-        data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
-        #data = data.mean(axis=0)
-        tic = time.time()
-        for i in range(data.size//NUM_SAMPS):
-            data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = get_fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
-        data = data.mean(axis=0)
-        toc = time.time()
         # print("FFT analysis took {:.4f} seconds".format(toc-tic))
         peaks, _ = find_peaks(data, height=1)
         # results_half = peak_widths(data, peaks, rel_height=0.5)
@@ -59,6 +68,7 @@ def update(frame):
 q = multiprocessing.Queue( MAX_QUEUE_SIZE )
 quit = multiprocessing.Event()
 update_params = multiprocessing.Queue(1)
+output_q = multiprocessing.Queue(1)
 
 
 fig, ax = plt.subplots(figsize=(12, 10))
@@ -86,12 +96,18 @@ ani = FuncAnimation(fig, update, init_func=init, frames=None, interval=0, blit=F
 run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
 run_usrp_process.start()
 
+run_FFT_process=multiprocessing.Process(None, fft_process, args=(q,))
+run_FFT_process.start()
+
 plt.show()
 
 print("plot closed")
 quit.set()
 time.sleep(1)
 run_usrp_process.terminate()
+run_FFT_process.terminate()
 run_usrp_process.join()
+run_FFT_process.join()
 q.close()
+output_q.close()
 print("Cleaned everything")
