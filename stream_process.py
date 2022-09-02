@@ -2,13 +2,15 @@ import uhd
 import numpy as np
 import SoapySDR
 from SoapySDR import * #SOAPY_SDR_ constants
+import time
 
 SAMPLE_RATE = 20e6
 CENTER_FREQ = 104.5e6
 GAIN = 10
 NUM_RECV_FRAMES = 2040
 
-MAX_QUEUE_SIZE = 1 
+MAX_QUEUE_SIZE = 50 
+BUFFER_STRIDE = 50
 
 def run_usrp(q, quit, update_params):
     usrp = uhd.usrp.MultiUSRP()
@@ -26,10 +28,12 @@ def run_usrp(q, quit, update_params):
     buffer_samps = streamer.get_max_num_samps()
     # print(buffer_samps)
     recv_buffer = np.zeros(NUM_RECV_FRAMES, dtype=np.complex64)
-    samples = np.zeros(NUM_RECV_FRAMES * 50, dtype=np.complex64)
+    samples = np.zeros(NUM_RECV_FRAMES * BUFFER_STRIDE, dtype=np.complex64)
 
     QUEUE_FULL = 0
     QUEUE_WRITTEN = 0
+
+    elapsed = 0.0
     
     while quit.is_set() is False:
         if not update_params.empty():
@@ -39,15 +43,20 @@ def run_usrp(q, quit, update_params):
             elif param[0] == "gain":
                 usrp.set_rx_gain(param[1], 0)
         else:
-            for i in range(50):
+            tic = time.time()
+            for i in range(BUFFER_STRIDE):
                 streamer.recv(recv_buffer, metadata)
                 samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
-            
+            toc = time.time()
+            elapsed += toc-tic
             if q.qsize() < MAX_QUEUE_SIZE:
                 QUEUE_WRITTEN += 1
                 q.put_nowait(samples)
             else:
                 QUEUE_FULL += 1
+            if elapsed >= 3.0:
+                print("{:.2f}".format(QUEUE_WRITTEN / QUEUE_FULL))
+                elapsed = 0.0
 
     print("Queue was full: ", QUEUE_FULL)
     print("Queue was written: ", QUEUE_WRITTEN)
@@ -68,7 +77,7 @@ def run_soapy(q, quit, update_params, device = "hackrf"):
     sdr.activateStream(rxStream)
 
     recv_buffer = np.zeros(NUM_RECV_FRAMES, dtype=np.complex64)
-    samples = np.zeros(NUM_RECV_FRAMES * 50, dtype=np.complex64)
+    samples = np.zeros(NUM_RECV_FRAMES * BUFFER_STRIDE, dtype=np.complex64)
 
     QUEUE_FULL = 0
     QUEUE_WRITTEN = 0
@@ -81,7 +90,7 @@ def run_soapy(q, quit, update_params, device = "hackrf"):
             elif param[0] == "gain":
                 sdr.setGain(SOAPY_SDR_RX, 0, param[1])
         else:
-            for i in range(50):
+            for i in range(BUFFER_STRIDE):
                 sr = sdr.readStream(rxStream, [recv_buffer], len(recv_buffer))
                 samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
 

@@ -7,7 +7,7 @@ import time, multiprocessing
 from stream_process import run_usrp, run_soapy, SAMPLE_RATE, CENTER_FREQ, MAX_QUEUE_SIZE
 from utils import get_fft, fftshift, fftfreq
 
-NUM_SAMPS = 400
+NUM_SAMPS = 1600
 
 class Index:
 
@@ -41,9 +41,12 @@ def update(frame):
 
         data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
         #data = data.mean(axis=0)
+        tic = time.time()
         for i in range(data.size//NUM_SAMPS):
             data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = get_fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
         data = data.mean(axis=0)
+        toc = time.time()
+        # print("FFT analysis took {:.4f} seconds".format(toc-tic))
         peaks, _ = find_peaks(data, height=1)
         # results_half = peak_widths(data, peaks, rel_height=0.5)
         fft_line.set_data(xf, data)
