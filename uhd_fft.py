@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-plt.style.use("dark_background")
+plt.style.use("ggplot")
+# plt.style.use("dark_background")
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
@@ -27,37 +28,39 @@ def fft_process(q, quit):
     print("FFT closed")
 
 
-class Index:
-    def __init__(self, quit, update_params):
-        self.quit = quit
-        self.update_params = update_params
-    def start(self, event):
-        # Not implemented
-        pass
-    def stop(self, event):
-        self.quit.set()
-    def change_freq(self, freq):
-        self.update_params.put(("freq", freq))
-    def change_gain(self, gain):
-        self.update_params.put(("gain", gain))
-
-def update(frame, ax, xf, fft_line, peak_graph):
-    try:
-        while not output_q.empty(): 
-            data = output_q.get()
-        data = data.astype("complex64")
-        # yf = get_fft(data[-NUM_SAMPS:] * window)
-        # print("FFT analysis took {:.4f} seconds".format(toc-tic))
-        peaks, _ = find_peaks(data, height=1)
-        # results_half = peak_widths(data, peaks, rel_height=0.5)
-        fft_line.set_data(xf, data)
-        peak_graph.set_data(xf[peaks], data[peaks])
-        return fft_line, peak_graph
-    except:
-        #print("error with update in plot_processing")
-        return fft_line, peak_graph
 
 def matplotlib_process(out_q, quit, update_params):
+    class Index:
+        def __init__(self, quit, update_params):
+            self.quit = quit
+            self.update_params = update_params
+        def start(self, event):
+            # Not implemented
+            pass
+        def stop(self, event):
+            self.quit.set()
+        def change_freq(self, freq):
+            if freq != '':
+                self.update_params.put(("freq", freq))
+        def change_gain(self, gain):
+            self.update_params.put(("gain", gain))
+
+    def update(frame, ax, xf, fft_line, peak_graph):
+        try:
+            while not output_q.empty(): 
+                data = output_q.get()
+            data = data.astype("complex64")
+            # yf = get_fft(data[-NUM_SAMPS:] * window)
+            # print("FFT analysis took {:.4f} seconds".format(toc-tic))
+            peaks, _ = find_peaks(data, height=1)
+            # results_half = peak_widths(data, peaks, rel_height=0.5)
+            fft_line.set_data(xf, data)
+            peak_graph.set_data(xf[peaks], data[peaks])
+            return fft_line, peak_graph
+        except:
+            #print("error with update in plot_processing")
+            return fft_line, peak_graph
+
     output_q = out_q
     fig, ax = plt.subplots(figsize=(12, 10))
     fft_line = plt.plot([], [], 'r')[0]
