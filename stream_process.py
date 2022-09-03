@@ -33,7 +33,6 @@ def run_usrp(q, quit, update_params):
     QUEUE_FULL = 0
     QUEUE_WRITTEN = 0
 
-    elapsed = 0.0
     
     while quit.is_set() is False:
         if not update_params.empty():
@@ -43,20 +42,19 @@ def run_usrp(q, quit, update_params):
             elif param[0] == "gain":
                 usrp.set_rx_gain(param[1], 0)
         else:
-            tic = time.time()
             for i in range(BUFFER_STRIDE):
                 streamer.recv(recv_buffer, metadata)
                 samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
-            toc = time.time()
-            elapsed += toc-tic
-            if q.qsize() < MAX_QUEUE_SIZE:
-                QUEUE_WRITTEN += 1
+            try:
                 q.put_nowait(samples)
-            else:
+                QUEUE_WRITTEN += 1
+            except:
                 QUEUE_FULL += 1
-            if elapsed >= 3.0:
-                #print("{:.2f}".format(QUEUE_WRITTEN / QUEUE_FULL))
-                elapsed = 0.0
+            # if q.qsize() < MAX_QUEUE_SIZE:
+            #     QUEUE_WRITTEN += 1
+            #     q.put_nowait(samples)
+            # else:
+            #     QUEUE_FULL += 1
 
     print("Queue was full: ", QUEUE_FULL)
     print("Queue was written: ", QUEUE_WRITTEN)
