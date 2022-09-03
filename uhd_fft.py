@@ -11,6 +11,7 @@ from utils import get_fft, fftshift, fftfreq
 NUM_SAMPS = 1600
 
 def fft_process(q, quit):
+    window = windows.hann(NUM_SAMPS)
     while quit.is_set() is False:
         try:
             while not q.empty():
@@ -27,29 +28,20 @@ def fft_process(q, quit):
 
 
 class Index:
-
     def __init__(self, quit, update_params):
         self.quit = quit
         self.update_params = update_params
-
     def start(self, event):
         # Not implemented
         pass
-
     def stop(self, event):
         self.quit.set()
-
     def change_freq(self, freq):
         self.update_params.put(("freq", freq))
-
     def change_gain(self, gain):
         self.update_params.put(("gain", gain))
 
-def init():
-    ax.set_xlim(min(xf), max(xf))
-    ax.set_ylim(-1, 6)
-
-def update(frame):
+def update(frame, ax, xf, fft_line, peak_graph):
     try:
         while not output_q.empty(): 
             data = output_q.get()
@@ -65,53 +57,63 @@ def update(frame):
         #print("error with update in plot_processing")
         return fft_line, peak_graph
 
-q = multiprocessing.Queue( MAX_QUEUE_SIZE )
-quit = multiprocessing.Event()
-update_params = multiprocessing.Queue(1)
-output_q = multiprocessing.Queue(10)
+def matplotlib_process(out_q, quit, update_params):
+    output_q = out_q
+    fig, ax = plt.subplots(figsize=(12, 10))
+    fft_line = plt.plot([], [], 'r')[0]
+    peak_graph = plt.plot([], [], 'x')[0]
+
+    callback = Index(quit, update_params)
+    axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
+    bstop = Button(axstop, 'Stop')
+    bstop.on_clicked(callback.stop)
+
+    axtext = plt.axes([0.1, 0.05, 0.3, 0.02])
+    text_box = TextBox(axtext, "Center_Freq", textalignment="center")
+    text_box.on_submit(callback.change_freq)
+
+    axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
+    gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=10, orientation="vertical")
+    gain_slider.on_changed(callback.change_gain)
+
+    xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
+
+    ax.set_xlim(min(xf), max(xf))
+    ax.set_ylim(-1, 6)
+
+    ani = FuncAnimation(fig, update, frames=None, fargs=(ax, xf, fft_line, peak_graph), interval=0, blit=False)
+    plt.show()
+    print("Setting quit")
+    quit.set()
+
+if __name__ == "__main__":
+    q = multiprocessing.Queue( MAX_QUEUE_SIZE )
+    quit = multiprocessing.Event()
+    update_params = multiprocessing.Queue(1)
+    output_q = multiprocessing.Queue(10)
+    
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params))
+    run_matplotlib_process.start()
+
+    run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
+    run_FFT_process.start()
+
+    run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
+    run_usrp_process.start()
 
 
-fig, ax = plt.subplots(figsize=(12, 10))
-fft_line = plt.plot([], [], 'r')[0]
-peak_graph = plt.plot([], [], 'x')[0]
-
-callback = Index(quit, update_params)
-axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
-bstop = Button(axstop, 'Stop')
-bstop.on_clicked(callback.stop)
-
-axtext = plt.axes([0.1, 0.05, 0.3, 0.02])
-text_box = TextBox(axtext, "Center_Freq", textalignment="center")
-text_box.on_submit(callback.change_freq)
-
-axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
-gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=10, orientation="vertical")
-gain_slider.on_changed(callback.change_gain)
-
-xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
-
-window = windows.hann(NUM_SAMPS)
-ani = FuncAnimation(fig, update, init_func=init, frames=None, interval=0, blit=False)
-
-run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
-run_usrp_process.start()
-
-run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
-run_FFT_process.start()
-# run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q,))
-# run_FFT_process2.start()
-
-plt.show()
-
-print("plot closed")
-quit.set()
-time.sleep(1)
-run_usrp_process.terminate()
-run_FFT_process.terminate()
-# run_FFT_process2.terminate()
-run_usrp_process.join()
-run_FFT_process.join()
-# run_FFT_process2.join()
-q.close()
-output_q.close()
-print("Cleaned everything")
+    while quit.is_set() is False:
+        time.sleep(0.5)
+    print("plot closed")
+    quit.set()
+    time.sleep(1)
+    run_matplotlib_process.terminate()
+    run_usrp_process.terminate()
+    run_FFT_process.terminate()
+    run_matplotlib_process.join()
+    run_usrp_process.join()
+    run_FFT_process.join()
+    q.close()
+    output_q.close()
+    update_params.close()
+    print("Cleaned everything")

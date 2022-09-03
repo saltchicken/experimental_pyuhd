@@ -55,7 +55,7 @@ def run_usrp(q, quit, update_params):
             else:
                 QUEUE_FULL += 1
             if elapsed >= 3.0:
-                print("{:.2f}".format(QUEUE_WRITTEN / QUEUE_FULL))
+                #print("{:.2f}".format(QUEUE_WRITTEN / QUEUE_FULL))
                 elapsed = 0.0
 
     print("Queue was full: ", QUEUE_FULL)
