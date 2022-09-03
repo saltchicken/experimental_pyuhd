@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-plt.style.use(plt.style.available[3])
+plt.style.use("dark_background")
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
@@ -100,7 +100,6 @@ if __name__ == "__main__":
 
     run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
     run_usrp_process.start()
-
 
     while quit.is_set() is False:
         time.sleep(0.5)
