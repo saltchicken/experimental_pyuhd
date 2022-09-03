@@ -11,8 +11,7 @@ from utils import get_fft, fftshift, fftfreq
 NUM_SAMPS = 1600
 
 def fft_process(q):
-    time.sleep(4)
-    for j in range(100000):
+    while True:
         try:
             while not q.empty():
                 data = q.get()
@@ -68,7 +67,7 @@ def update(frame):
 q = multiprocessing.Queue( MAX_QUEUE_SIZE )
 quit = multiprocessing.Event()
 update_params = multiprocessing.Queue(1)
-output_q = multiprocessing.Queue(1)
+output_q = multiprocessing.Queue(10)
 
 
 fig, ax = plt.subplots(figsize=(12, 10))
@@ -98,6 +97,8 @@ run_usrp_process.start()
 
 run_FFT_process=multiprocessing.Process(None, fft_process, args=(q,))
 run_FFT_process.start()
+# run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q,))
+# run_FFT_process2.start()
 
 plt.show()
 
@@ -106,8 +107,10 @@ quit.set()
 time.sleep(1)
 run_usrp_process.terminate()
 run_FFT_process.terminate()
+# run_FFT_process2.terminate()
 run_usrp_process.join()
 run_FFT_process.join()
+# run_FFT_process2.join()
 q.close()
 output_q.close()
 print("Cleaned everything")

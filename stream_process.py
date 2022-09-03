@@ -65,8 +65,8 @@ def run_usrp(q, quit, update_params):
     print("Cleaned usrp")
 
 
-def run_soapy(q, quit, update_params, device = "hackrf"):
-    args = dict(driver="hackrf")
+def run_soapy(q, quit, update_params, device = "lime"):
+    args = dict(driver="lime")
     sdr = SoapySDR.Device(args)
 
     sdr.setSampleRate(SOAPY_SDR_RX, 0, SAMPLE_RATE)
