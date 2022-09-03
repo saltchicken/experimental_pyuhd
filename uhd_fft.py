@@ -15,14 +15,16 @@ def fft_process(q, quit):
     window = windows.hann(NUM_SAMPS)
     while quit.is_set() is False:
         try:
-            while not q.empty():
-                data = q.get()
+            data = q.get()
             data = data.astype("complex64")
             data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
             for i in range(data.size//NUM_SAMPS):
                 data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = get_fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
             data = data.mean(axis=0)
-            output_q.put_nowait(data)
+            try:
+                output_q.put_nowait(data)
+            except:
+                pass
         except:
             pass
     print("FFT closed")
@@ -100,6 +102,8 @@ if __name__ == "__main__":
 
     run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
     run_FFT_process.start()
+    run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
+    run_FFT_process2.start()
 
     run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
     run_usrp_process.start()
@@ -112,9 +116,11 @@ if __name__ == "__main__":
     run_matplotlib_process.terminate()
     run_usrp_process.terminate()
     run_FFT_process.terminate()
+    run_FFT_process2.terminate()
     run_matplotlib_process.join()
     run_usrp_process.join()
     run_FFT_process.join()
+    run_FFT_process2.join()
     q.close()
     output_q.close()
     update_params.close()

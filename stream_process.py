@@ -4,9 +4,9 @@ import SoapySDR
 from SoapySDR import * #SOAPY_SDR_ constants
 import time
 
-SAMPLE_RATE = 20e6
+SAMPLE_RATE = 40e6
 CENTER_FREQ = 104.5e6
-GAIN = 10
+GAIN = 0
 NUM_RECV_FRAMES = 2040
 
 MAX_QUEUE_SIZE = 50 
@@ -50,11 +50,6 @@ def run_usrp(q, quit, update_params):
                 QUEUE_WRITTEN += 1
             except:
                 QUEUE_FULL += 1
-            # if q.qsize() < MAX_QUEUE_SIZE:
-            #     QUEUE_WRITTEN += 1
-            #     q.put_nowait(samples)
-            # else:
-            #     QUEUE_FULL += 1
 
     print("Queue was full: ", QUEUE_FULL)
     print("Queue was written: ", QUEUE_WRITTEN)
