@@ -10,8 +10,8 @@ from utils import get_fft, fftshift, fftfreq
 
 NUM_SAMPS = 1600
 
-def fft_process(q):
-    while True:
+def fft_process(q, quit):
+    while quit.is_set() is False:
         try:
             while not q.empty():
                 data = q.get()
@@ -23,6 +23,7 @@ def fft_process(q):
             output_q.put_nowait(data)
         except:
             pass
+    print("FFT closed")
 
 
 class Index:
@@ -95,7 +96,7 @@ ani = FuncAnimation(fig, update, init_func=init, frames=None, interval=0, blit=F
 run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
 run_usrp_process.start()
 
-run_FFT_process=multiprocessing.Process(None, fft_process, args=(q,))
+run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
 run_FFT_process.start()
 # run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q,))
 # run_FFT_process2.start()
