@@ -48,7 +48,7 @@ def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
                     usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(param[1]), 0)
                     print(center_freq.value)
                 else:
-                    sdr.setFrequency(SOAPY_SDR_RX, 0, float(param[1]))
+                    sdr.setFrequency(SOAPY_SDR_RX, 0, param[1])
             elif param[0] == "gain":
                 if device == "uhd":
                     usrp.set_rx_gain(param[1], 0)
