@@ -10,7 +10,7 @@ GAIN = 0
 NUM_RECV_FRAMES = 2040
 
 MAX_QUEUE_SIZE = 50 
-BUFFER_STRIDE = 50
+BUFFER_STRIDE = 200
 
 def run_usrp(q, quit, update_params):
     usrp = uhd.usrp.MultiUSRP()
@@ -35,6 +35,7 @@ def run_usrp(q, quit, update_params):
 
     
     while quit.is_set() is False:
+        print(quit.is_set())
         if not update_params.empty():
             param = update_params.get()
             if param[0] == "freq":
@@ -46,7 +47,7 @@ def run_usrp(q, quit, update_params):
                 streamer.recv(recv_buffer, metadata)
                 samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
             try:
-                q.put_nowait(samples)
+                q.send(samples)
                 QUEUE_WRITTEN += 1
             except:
                 QUEUE_FULL += 1

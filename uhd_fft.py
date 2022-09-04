@@ -15,7 +15,7 @@ def fft_process(q, quit):
     window = windows.hann(NUM_SAMPS)
     while quit.is_set() is False:
         try:
-            data = q.get()
+            data = q.recv()
             data = data.astype("complex64")
             data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
             for i in range(data.size//NUM_SAMPS):
@@ -92,7 +92,7 @@ def matplotlib_process(out_q, quit, update_params):
     quit.set()
 
 if __name__ == "__main__":
-    q = multiprocessing.Queue( MAX_QUEUE_SIZE )
+    receive_q, send_q = multiprocessing.Pipe()
     quit = multiprocessing.Event()
     update_params = multiprocessing.Queue(1)
     output_q = multiprocessing.Queue(10)
@@ -100,28 +100,28 @@ if __name__ == "__main__":
     run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params))
     run_matplotlib_process.start()
 
-    run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
+    run_FFT_process=multiprocessing.Process(None, fft_process, args=(receive_q, quit))
     run_FFT_process.start()
-    run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
-    run_FFT_process2.start()
+    # run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
+    # run_FFT_process2.start()
 
-    run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
+    run_usrp_process=multiprocessing.Process(None, run_usrp, args=(send_q, quit, update_params))
     run_usrp_process.start()
 
     while quit.is_set() is False:
         time.sleep(0.5)
     print("plot closed")
     quit.set()
-    time.sleep(1)
-    run_matplotlib_process.terminate()
-    run_usrp_process.terminate()
-    run_FFT_process.terminate()
-    run_FFT_process2.terminate()
+    #run_matplotlib_process.terminate()
+    #run_usrp_process.terminate()
+    #run_FFT_process.terminate()
+    # run_FFT_process2.terminate()
     run_matplotlib_process.join()
     run_usrp_process.join()
     run_FFT_process.join()
-    run_FFT_process2.join()
-    q.close()
+    # run_FFT_process2.join()
+    # q.close()
+    send_q.close()
     output_q.close()
     update_params.close()
     print("Cleaned everything")
