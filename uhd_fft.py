@@ -1,15 +1,29 @@
 import matplotlib.pyplot as plt
-plt.style.use("ggplot")
-# plt.style.use("dark_background")
+# plt.style.use("ggplot")
+plt.style.use("dark_background")
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
 import time, multiprocessing
 
-from stream_process import run_sdr, SAMPLE_RATE, CENTER_FREQ, MAX_QUEUE_SIZE
+from stream_process import run_sdr
 from utils import get_fft, fftshift, fftfreq
 
+import argparse
+
 NUM_SAMPS = 1600
+MAX_QUEUE_SIZE = 50
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--args", default="", type=str)
+	# parser.add_argument("-o", "--output-file", type=str, required=True)
+    parser.add_argument("-f", "--freq", default=104500000, type=float)
+    parser.add_argument("-r", "--rate", default=20e6, type=float)
+    # parser.add_argument("-d", "--duration", default=5.0, type=float)
+    # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
+    parser.add_argument("-g", "--gain", default=0, type=int)
+    return parser.parse_args()
 
 def fft_process(q, quit):
     window = windows.hann(NUM_SAMPS)
@@ -31,7 +45,7 @@ def fft_process(q, quit):
 
 
 
-def matplotlib_process(out_q, quit, update_params):
+def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init):
     class Index:
         def __init__(self, quit, update_params):
             self.quit = quit
@@ -44,6 +58,9 @@ def matplotlib_process(out_q, quit, update_params):
         def change_freq(self, freq):
             if freq != '':
                 self.update_params.put(("freq", freq))
+                # CENTER_FREQ = float(freq)
+                # xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
+                # ax.set_xlim(min(xf), max(xf))
         def change_gain(self, gain):
             self.update_params.put(("gain", gain))
 
@@ -78,10 +95,10 @@ def matplotlib_process(out_q, quit, update_params):
     text_box.on_submit(callback.change_freq)
 
     axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
-    gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=10, orientation="vertical")
+    gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=gain_init, orientation="vertical")
     gain_slider.on_changed(callback.change_gain)
 
-    xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
+    xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + center_freq)
 
     ax.set_xlim(min(xf), max(xf))
     ax.set_ylim(-1, 6)
@@ -92,12 +109,15 @@ def matplotlib_process(out_q, quit, update_params):
     quit.set()
 
 if __name__ == "__main__":
+
+    args = parse_args()
+
     q = multiprocessing.Queue( MAX_QUEUE_SIZE )
     quit = multiprocessing.Event()
     update_params = multiprocessing.Queue(1)
     output_q = multiprocessing.Queue(10)
     
-    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params))
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, args.rate, args.freq, args.gain))
     run_matplotlib_process.start()
 
     run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
@@ -105,7 +125,7 @@ if __name__ == "__main__":
     run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
     run_FFT_process2.start()
 
-    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, "uhd"))
+    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, args.rate, args.freq, args.gain, "uhd"))
     run_sdr_process.start()
 
     while quit.is_set() is False:

@@ -2,37 +2,32 @@ import uhd
 import numpy as np
 import SoapySDR
 from SoapySDR import * #SOAPY_SDR_ constants
-import time
-
-SAMPLE_RATE = 40e6
-CENTER_FREQ = 104.5e6
-GAIN = 0
-NUM_RECV_FRAMES = 2040
-
-MAX_QUEUE_SIZE = 50 
-BUFFER_STRIDE = 50
-
-def run_sdr(q, quit, update_params, device="lime"):
-    if device == "uhd":
-        usrp = uhd.usrp.MultiUSRP()
-        usrp.set_rx_rate(SAMPLE_RATE, 0)
-        usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(CENTER_FREQ), 0)
-        usrp.set_rx_gain(GAIN, 0)
-
+import time 
+  
+NUM_RECV_FRAMES = 2040 
+BUFFER_STRIDE = 50 
+ 
+def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
+    if device == "uhd": 
+        usrp = uhd.usrp.MultiUSRP() 
+        usrp.set_rx_rate(rate, 0) 
+        usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(center_freq, 0))  
+        usrp.set_rx_gain(gain, 0)
+ 
         st_args = uhd.usrp.StreamArgs("fc32", "sc16")
-        st_args.channels = [0]
+        st_args.channels = [0] 
         metadata = uhd.types.RXMetadata()
         streamer = usrp.get_rx_stream(st_args)
         stream_cmd = uhd.types.StreamCMD(uhd.types.StreamMode.start_cont)
-        stream_cmd.stream_now = True
+        stream_cmd.stream_now = True 
         streamer.issue_stream_cmd(stream_cmd)
-    else:
-        args = dict(driver="lime")
-        sdr = SoapySDR.Device(args)
-
-        sdr.setSampleRate(SOAPY_SDR_RX, 0, SAMPLE_RATE)
-        sdr.setFrequency(SOAPY_SDR_RX, 0, CENTER_FREQ)
-        #sdr.setGain(SOAPY_SDR_RX, 0, GAIN)
+    else: 
+        args = dict(driver="lime") 
+        sdr = SoapySDR.Device(args) 
+ 
+        sdr.setSampleRate(SOAPY_SDR_RX, 0, rate)
+        sdr.setFrequency(SOAPY_SDR_RX, 0, center_freq)  
+        #sdr.setGain(SOAPY_SDR_RX, 0, gain)
 
         rxStream = sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32)
         sdr.activateStream(rxStream)
@@ -51,6 +46,7 @@ def run_sdr(q, quit, update_params, device="lime"):
             if param[0] == "freq":
                 if device == "uhd":
                     usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(float(param[1])), 0)
+                    print("set freq")
                 else:
                     sdr.setFrequency(SOAPY_SDR_RX, 0, float(param[1]))
             elif param[0] == "gain":
