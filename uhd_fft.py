@@ -6,7 +6,7 @@ from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
 import time, multiprocessing
 
-from stream_process import run_usrp, run_soapy, SAMPLE_RATE, CENTER_FREQ, MAX_QUEUE_SIZE
+from stream_process import run_sdr, SAMPLE_RATE, CENTER_FREQ, MAX_QUEUE_SIZE
 from utils import get_fft, fftshift, fftfreq
 
 NUM_SAMPS = 1600
@@ -105,8 +105,8 @@ if __name__ == "__main__":
     run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
     run_FFT_process2.start()
 
-    run_usrp_process=multiprocessing.Process(None, run_usrp, args=(q, quit, update_params))
-    run_usrp_process.start()
+    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, "uhd"))
+    run_sdr_process.start()
 
     while quit.is_set() is False:
         time.sleep(0.5)
@@ -114,11 +114,11 @@ if __name__ == "__main__":
     quit.set()
     time.sleep(1)
     run_matplotlib_process.terminate()
-    run_usrp_process.terminate()
+    run_sdr_process.terminate()
     run_FFT_process.terminate()
     run_FFT_process2.terminate()
     run_matplotlib_process.join()
-    run_usrp_process.join()
+    run_sdr_process.join()
     run_FFT_process.join()
     run_FFT_process2.join()
     q.close()
