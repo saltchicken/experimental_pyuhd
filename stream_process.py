@@ -35,7 +35,6 @@ def run_usrp(q, quit, update_params):
 
     
     while quit.is_set() is False:
-        print(quit.is_set())
         if not update_params.empty():
             param = update_params.get()
             if param[0] == "freq":
@@ -46,11 +45,7 @@ def run_usrp(q, quit, update_params):
             for i in range(BUFFER_STRIDE):
                 streamer.recv(recv_buffer, metadata)
                 samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
-            try:
-                q.send(samples)
-                QUEUE_WRITTEN += 1
-            except:
-                QUEUE_FULL += 1
+            q.send(samples)
 
     print("Queue was full: ", QUEUE_FULL)
     print("Queue was written: ", QUEUE_WRITTEN)
