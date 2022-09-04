@@ -5,11 +5,14 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
 import time, multiprocessing
+from multiprocessing.sharedctypes import Value
+from ctypes import c_double
 
 from stream_process import run_sdr
 from utils import get_fft, fftshift, fftfreq
 
 import argparse
+import code
 
 NUM_SAMPS = 1600
 MAX_QUEUE_SIZE = 50
@@ -50,6 +53,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
         def __init__(self, quit, update_params):
             self.quit = quit
             self.update_params = update_params
+            self.center_freq = center_freq
         def start(self, event):
             # Not implemented
             pass
@@ -57,14 +61,20 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
             self.quit.set()
         def change_freq(self, freq):
             if freq != '':
-                self.update_params.put(("freq", freq))
-                # CENTER_FREQ = float(freq)
-                # xf = fftshift(fftfreq(NUM_SAMPS, 1 / SAMPLE_RATE) + CENTER_FREQ)
-                # ax.set_xlim(min(xf), max(xf))
+                self.center_freq.value = float(freq)
+                self.update_params.put(("freq", self.center_freq.value))
         def change_gain(self, gain):
             self.update_params.put(("gain", gain))
+        def on_press(self, event):
+            if event.key == "right":
+                self.center_freq.value += 100000.0
+                self.update_params.put(("freq", self.center_freq.value))
+            elif event.key == "left":
+                self.center_freq.value -= 100000.0
+                self.update_params.put(("freq", self.center_freq.value))
+            else: print(event.key)
 
-    def update(frame, ax, xf, fft_line, peak_graph):
+    def update(frame, ax, xf, fft_line, peak_graph, center_freq):
         try:
             while not output_q.empty(): 
                 data = output_q.get()
@@ -73,6 +83,12 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
             # print("FFT analysis took {:.4f} seconds".format(toc-tic))
             peaks, _ = find_peaks(data, height=1)
             # results_half = peak_widths(data, peaks, rel_height=0.5)
+
+            # TODO Move this out of loop, this causes the lag when holding arrow key
+            xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+            ax.set_xlim(min(xf), max(xf))
+            ax.set_ylim(-1, 6)
+
             fft_line.set_data(xf, data)
             peak_graph.set_data(xf[peaks], data[peaks])
             return fft_line, peak_graph
@@ -98,12 +114,15 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
     gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=gain_init, orientation="vertical")
     gain_slider.on_changed(callback.change_gain)
 
-    xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + center_freq)
+
+    fig.canvas.mpl_connect('key_press_event', callback.on_press)
+
+    xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
 
     ax.set_xlim(min(xf), max(xf))
     ax.set_ylim(-1, 6)
 
-    ani = FuncAnimation(fig, update, frames=None, fargs=(ax, xf, fft_line, peak_graph), interval=0, blit=False)
+    ani = FuncAnimation(fig, update, frames=None, fargs=(ax, xf, fft_line, peak_graph, center_freq), interval=0, blit=False)
     plt.show()
     print("Setting quit")
     quit.set()
@@ -116,8 +135,10 @@ if __name__ == "__main__":
     quit = multiprocessing.Event()
     update_params = multiprocessing.Queue(1)
     output_q = multiprocessing.Queue(10)
+
+    center_freq = Value(c_double, args.freq)
     
-    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, args.rate, args.freq, args.gain))
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, args.rate, center_freq, args.gain))
     run_matplotlib_process.start()
 
     run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
@@ -125,11 +146,11 @@ if __name__ == "__main__":
     run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
     run_FFT_process2.start()
 
-    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, args.rate, args.freq, args.gain, "uhd"))
+    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, args.rate, center_freq, args.gain, "uhd"))
     run_sdr_process.start()
 
     while quit.is_set() is False:
-        time.sleep(0.5)
+        time.sleep(1)
     print("plot closed")
     quit.set()
     time.sleep(1)
