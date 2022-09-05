@@ -55,43 +55,53 @@ def fft_process(q, quit):
 
 def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init):
     class Index:
-        def __init__(self, quit, update_params):
+        def __init__(self, ax, quit, update_params):
+            self.ax = ax
             self.quit = quit
             self.update_params = update_params
             self.center_freq = center_freq
             self.threshold_line = None
+            self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+            
+            self.ax.set_xlim(min(self.xf), max(self.xf))
+            self.ax.set_ylim(-1, 6)
+
         def start(self, event):
             # Not implemented
             pass
+        
         def stop(self, event):
             self.quit.set()
+        
         def change_freq(self, freq):
             if freq != '':
                 self.center_freq.value = float(freq)
                 self.update_params.put(("freq", self.center_freq.value))
+                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+                self.ax.set_xlim(min(self.xf), max(self.xf))
+        
         def change_gain(self, gain):
             self.update_params.put(("gain", gain))
+        
         def on_press(self, event):
             if event.key == "right":
                 self.center_freq.value += 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
+                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+                self.ax.set_xlim(min(self.xf), max(self.xf))
             elif event.key == "left":
                 self.center_freq.value -= 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
-            # elif event.key == "down":
-            #     if self.threshold_line:
-            #         self.threshold_line.remove()
-            #     self.threshold_line = ax.axhline(0, 0, 100000000000.0)
-
-            else: print(event.key)
-
+                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+                self.ax.set_xlim(min(self.xf), max(self.xf))
+        
         def threshold_clicked(self, label):
             if label == "On":
                 self.threshold_line = ax.axhline(1, 0, 100000000000.0)
             else:
                 self.threshold_line.remove()
 
-        def update(self, frame, ax, xf, fft_line, peak_graph, center_freq):
+        def update(self, frame, fft_line, peak_graph, center_freq):
             try:
                 while not output_q.empty(): 
                     data = output_q.get()
@@ -101,16 +111,8 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
                 peaks, _ = find_peaks(data, height=1)
                 # results_half = peak_widths(data, peaks, rel_height=0.5)
 
-                # TODO Move this out of loop, this causes the lag when holding arrow key
-                xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
-                # xf = xf[::2]
-                ax.set_xlim(min(xf), max(xf))
-                ax.set_ylim(-1, 6)
-
-                fft_line.set_data(xf, data)
-                peak_graph.set_data(xf[peaks], data[peaks])
-                #threshold_line.remove()
-                #threshold_line = ax.axhline(2, 0, 100000000000.0)
+                fft_line.set_data(self.xf, data)
+                peak_graph.set_data(self.xf[peaks], data[peaks])
                 return fft_line, peak_graph
             except:
                 #print("error with update in plot_processing")
@@ -121,7 +123,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
     fft_line = plt.plot([], [], 'r')[0]
     peak_graph = plt.plot([], [], 'x')[0]
 
-    callback = Index(quit, update_params)
+    callback = Index(ax, quit, update_params)
 
     axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
     bstop = Button(axstop, 'Stop')
@@ -139,15 +141,9 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
     threshold_radio = RadioButtons(ax_threshold_radio, ("On", "Off"), 1)
     threshold_radio.on_clicked(callback.threshold_clicked)
 
-
     fig.canvas.mpl_connect('key_press_event', callback.on_press)
 
-    xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
-
-    ax.set_xlim(min(xf), max(xf))
-    ax.set_ylim(-1, 6)
-
-    ani = FuncAnimation(fig, callback.update, frames=None, fargs=(ax, xf, fft_line, peak_graph, center_freq), interval=0, blit=False)
+    ani = FuncAnimation(fig, callback.update, frames=None, fargs=(fft_line, peak_graph, center_freq), interval=0, blit=False)
     plt.show()
     print("Setting quit")
     quit.set()
