@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 plt.style.use("ggplot")
 # plt.style.use("dark_background")
 from matplotlib.animation import FuncAnimation
-from matplotlib.widgets import Button, TextBox, Slider
+from matplotlib.widgets import Button, TextBox, Slider, RadioButtons
 from scipy.signal import windows, find_peaks, peak_widths
 import time, multiprocessing
 from multiprocessing.sharedctypes import Value
@@ -85,6 +85,12 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
 
             else: print(event.key)
 
+        def threshold_clicked(self, label):
+            if label == "On":
+                self.threshold_line = ax.axhline(1, 0, 100000000000.0)
+            else:
+                self.threshold_line.remove()
+
         def update(self, frame, ax, xf, fft_line, peak_graph, center_freq):
             try:
                 while not output_q.empty(): 
@@ -117,7 +123,6 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
 
     callback = Index(quit, update_params)
 
-    callback.threshold_line = ax.axhline(1, 0, 100000000000.0)
     axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
     bstop = Button(axstop, 'Stop')
     bstop.on_clicked(callback.stop)
@@ -129,6 +134,10 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
     axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
     gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=gain_init, orientation="vertical")
     gain_slider.on_changed(callback.change_gain)
+
+    ax_threshold_radio = plt.axes([0.05, 0.4, 0.15, 0.15])
+    threshold_radio = RadioButtons(ax_threshold_radio, ("On", "Off"), 1)
+    threshold_radio.on_clicked(callback.threshold_clicked)
 
 
     fig.canvas.mpl_connect('key_press_event', callback.on_press)
