@@ -10,7 +10,7 @@ BUFFER_STRIDE = 50
 def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
     if device == "uhd": 
         usrp = uhd.usrp.MultiUSRP() 
-        usrp.set_rx_rate(rate, 0) 
+        usrp.set_rx_rate(rate.value, 0) 
         usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(center_freq.value, 0))  
         usrp.set_rx_gain(gain.value, 0)
  
@@ -25,7 +25,7 @@ def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
         args = dict(driver="lime") 
         sdr = SoapySDR.Device(args) 
  
-        sdr.setSampleRate(SOAPY_SDR_RX, 0, rate)
+        sdr.setSampleRate(SOAPY_SDR_RX, 0, rate.value)
         sdr.setFrequency(SOAPY_SDR_RX, 0, center_freq.value)  
         #sdr.setGain(SOAPY_SDR_RX, 0, gain.value)
 

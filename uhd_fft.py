@@ -17,16 +17,6 @@ NUM_SAMPS = 1600
 MAX_QUEUE_SIZE = 50
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--args", default="", type=str)
-	# parser.add_argument("-o", "--output-file", type=str, required=True)
-    parser.add_argument("-f", "--freq", default=104900000, type=float)
-    parser.add_argument("-r", "--rate", default=20e6, type=float)
-    # parser.add_argument("-d", "--duration", default=5.0, type=float)
-    # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
-    parser.add_argument("-g", "--gain", default=0, type=int)
-    return parser.parse_args()
 
 def fft_process(q, quit):
     window = windows.hann(NUM_SAMPS)
@@ -60,7 +50,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             self.center_freq = center_freq
             self.gain = gain
             self.threshold_line = None
-            self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+            self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
             
             self.ax.set_xlim(min(self.xf), max(self.xf))
             self.ax.set_ylim(-1, 6)
@@ -76,7 +66,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             if freq != '':
                 self.center_freq.value = float(freq)
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
                 self.ax.set_xlim(min(self.xf), max(self.xf))
         
         def change_gain(self, gain):
@@ -87,12 +77,12 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             if event.key == "right":
                 self.center_freq.value += 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
                 self.ax.set_xlim(min(self.xf), max(self.xf))
             elif event.key == "left":
                 self.center_freq.value -= 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
                 self.ax.set_xlim(min(self.xf), max(self.xf))
         
         def threshold_clicked(self, label):
@@ -148,6 +138,17 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
     print("Setting quit")
     quit.set()
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--args", default="", type=str)
+	# parser.add_argument("-o", "--output-file", type=str, required=True)
+    parser.add_argument("-f", "--freq", default=104900000, type=float)
+    parser.add_argument("-r", "--rate", default=20e6, type=float)
+    # parser.add_argument("-d", "--duration", default=5.0, type=float)
+    # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
+    parser.add_argument("-g", "--gain", default=0, type=int)
+    return parser.parse_args()
+
 if __name__ == "__main__":
 
     args = parse_args()
@@ -159,8 +160,9 @@ if __name__ == "__main__":
 
     center_freq = Value(c_double, args.freq)
     gain = Value('i', args.gain)
+    rate = Value(c_double, args.rate)
     
-    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, args.rate, center_freq, gain))
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, rate, center_freq, gain))
     run_matplotlib_process.start()
 
     run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
@@ -168,7 +170,7 @@ if __name__ == "__main__":
     run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
     run_FFT_process2.start()
 
-    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, args.rate, center_freq, gain, "uhd"))
+    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, rate, center_freq, gain, "uhd"))
     run_sdr_process.start()
 
     while quit.is_set() is False:
