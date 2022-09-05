@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-# plt.style.use("ggplot")
-plt.style.use("dark_background")
+plt.style.use("ggplot")
+# plt.style.use("dark_background")
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, TextBox, Slider
 from scipy.signal import windows, find_peaks, peak_widths
@@ -59,6 +59,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
             self.quit = quit
             self.update_params = update_params
             self.center_freq = center_freq
+            self.threshold_line = None
         def start(self, event):
             # Not implemented
             pass
@@ -77,30 +78,37 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
             elif event.key == "left":
                 self.center_freq.value -= 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
+            # elif event.key == "down":
+            #     if self.threshold_line:
+            #         self.threshold_line.remove()
+            #     self.threshold_line = ax.axhline(0, 0, 100000000000.0)
+
             else: print(event.key)
 
-    def update(frame, ax, xf, fft_line, peak_graph, center_freq):
-        try:
-            while not output_q.empty(): 
-                data = output_q.get()
-            data = data.astype("complex64")
-            # yf = get_fft(data[-NUM_SAMPS:] * window)
-            # print("FFT analysis took {:.4f} seconds".format(toc-tic))
-            peaks, _ = find_peaks(data, height=1)
-            # results_half = peak_widths(data, peaks, rel_height=0.5)
+        def update(self, frame, ax, xf, fft_line, peak_graph, center_freq):
+            try:
+                while not output_q.empty(): 
+                    data = output_q.get()
+                data = data.astype("complex64")
+                # yf = get_fft(data[-NUM_SAMPS:] * window)
+                # print("FFT analysis took {:.4f} seconds".format(toc-tic))
+                peaks, _ = find_peaks(data, height=1)
+                # results_half = peak_widths(data, peaks, rel_height=0.5)
 
-            # TODO Move this out of loop, this causes the lag when holding arrow key
-            xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
-            # xf = xf[::2]
-            ax.set_xlim(min(xf), max(xf))
-            ax.set_ylim(-1, 6)
+                # TODO Move this out of loop, this causes the lag when holding arrow key
+                xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+                # xf = xf[::2]
+                ax.set_xlim(min(xf), max(xf))
+                ax.set_ylim(-1, 6)
 
-            fft_line.set_data(xf, data)
-            peak_graph.set_data(xf[peaks], data[peaks])
-            return fft_line, peak_graph
-        except:
-            #print("error with update in plot_processing")
-            return fft_line, peak_graph
+                fft_line.set_data(xf, data)
+                peak_graph.set_data(xf[peaks], data[peaks])
+                #threshold_line.remove()
+                #threshold_line = ax.axhline(2, 0, 100000000000.0)
+                return fft_line, peak_graph
+            except:
+                #print("error with update in plot_processing")
+                return fft_line, peak_graph
 
     output_q = out_q
     fig, ax = plt.subplots(figsize=(12, 10))
@@ -108,6 +116,8 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
     peak_graph = plt.plot([], [], 'x')[0]
 
     callback = Index(quit, update_params)
+
+    callback.threshold_line = ax.axhline(1, 0, 100000000000.0)
     axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
     bstop = Button(axstop, 'Stop')
     bstop.on_clicked(callback.stop)
@@ -128,7 +138,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
     ax.set_xlim(min(xf), max(xf))
     ax.set_ylim(-1, 6)
 
-    ani = FuncAnimation(fig, update, frames=None, fargs=(ax, xf, fft_line, peak_graph, center_freq), interval=0, blit=False)
+    ani = FuncAnimation(fig, callback.update, frames=None, fargs=(ax, xf, fft_line, peak_graph, center_freq), interval=0, blit=False)
     plt.show()
     print("Setting quit")
     quit.set()
