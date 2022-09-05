@@ -12,7 +12,7 @@ def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
         usrp = uhd.usrp.MultiUSRP() 
         usrp.set_rx_rate(rate, 0) 
         usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(center_freq.value, 0))  
-        usrp.set_rx_gain(gain, 0)
+        usrp.set_rx_gain(gain.value, 0)
  
         st_args = uhd.usrp.StreamArgs("fc32", "sc16")
         st_args.channels = [0] 
@@ -27,7 +27,7 @@ def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
  
         sdr.setSampleRate(SOAPY_SDR_RX, 0, rate)
         sdr.setFrequency(SOAPY_SDR_RX, 0, center_freq.value)  
-        #sdr.setGain(SOAPY_SDR_RX, 0, gain)
+        #sdr.setGain(SOAPY_SDR_RX, 0, gain.value)
 
         rxStream = sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32)
         sdr.activateStream(rxStream)

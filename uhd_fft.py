@@ -51,15 +51,14 @@ def fft_process(q, quit):
             pass
     print("FFT closed")
 
-
-
-def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init):
+def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
     class Index:
         def __init__(self, ax, quit, update_params):
             self.ax = ax
             self.quit = quit
             self.update_params = update_params
             self.center_freq = center_freq
+            self.gain = gain
             self.threshold_line = None
             self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
             
@@ -81,7 +80,8 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
                 self.ax.set_xlim(min(self.xf), max(self.xf))
         
         def change_gain(self, gain):
-            self.update_params.put(("gain", gain))
+            self.gain.value = int(gain)
+            self.update_params.put(("gain", self.gain.value))
         
         def on_press(self, event):
             if event.key == "right":
@@ -101,7 +101,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
             else:
                 self.threshold_line.remove()
 
-        def update(self, frame, fft_line, peak_graph, center_freq):
+        def update(self, frame, fft_line, peak_graph):
             try:
                 while not output_q.empty(): 
                     data = output_q.get()
@@ -134,7 +134,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
     text_box.on_submit(callback.change_freq)
 
     axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
-    gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=gain_init, orientation="vertical")
+    gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=gain.value, orientation="vertical")
     gain_slider.on_changed(callback.change_gain)
 
     ax_threshold_radio = plt.axes([0.05, 0.4, 0.15, 0.15])
@@ -143,7 +143,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
 
     fig.canvas.mpl_connect('key_press_event', callback.on_press)
 
-    ani = FuncAnimation(fig, callback.update, frames=None, fargs=(fft_line, peak_graph, center_freq), interval=0, blit=False)
+    ani = FuncAnimation(fig, callback.update, frames=None, fargs=(fft_line, peak_graph), interval=0, blit=False)
     plt.show()
     print("Setting quit")
     quit.set()
@@ -158,8 +158,9 @@ if __name__ == "__main__":
     output_q = multiprocessing.Queue(10)
 
     center_freq = Value(c_double, args.freq)
+    gain = Value('i', args.gain)
     
-    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, args.rate, center_freq, args.gain))
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, args.rate, center_freq, gain))
     run_matplotlib_process.start()
 
     run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
@@ -167,7 +168,7 @@ if __name__ == "__main__":
     run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
     run_FFT_process2.start()
 
-    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, args.rate, center_freq, args.gain, "uhd"))
+    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, args.rate, center_freq, gain, "uhd"))
     run_sdr_process.start()
 
     while quit.is_set() is False:
