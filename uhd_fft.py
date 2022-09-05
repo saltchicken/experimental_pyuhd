@@ -9,19 +9,19 @@ from multiprocessing.sharedctypes import Value
 from ctypes import c_double
 
 from stream_process import run_sdr
-from utils import get_fft, fftshift, fftfreq
+from utils import get_fft, fftshift, fftfreq, butter_lowpass_filter
 
 import argparse
-import code
 
 NUM_SAMPS = 1600
 MAX_QUEUE_SIZE = 50
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--args", default="", type=str)
 	# parser.add_argument("-o", "--output-file", type=str, required=True)
-    parser.add_argument("-f", "--freq", default=104500000, type=float)
+    parser.add_argument("-f", "--freq", default=104900000, type=float)
     parser.add_argument("-r", "--rate", default=20e6, type=float)
     # parser.add_argument("-d", "--duration", default=5.0, type=float)
     # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
@@ -34,6 +34,11 @@ def fft_process(q, quit):
         try:
             data = q.get()
             data = data.astype("complex64")
+            # Low Pass Failter
+            # data = butter_lowpass_filter(data, 300000, 20000000, 6)
+            # Downsample
+            # ratio = 2
+            # data = data[::ratio]
             data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
             for i in range(data.size//NUM_SAMPS):
                 data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = get_fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
@@ -86,6 +91,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain_init)
 
             # TODO Move this out of loop, this causes the lag when holding arrow key
             xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate) + float(center_freq.value))
+            # xf = xf[::2]
             ax.set_xlim(min(xf), max(xf))
             ax.set_ylim(-1, 6)
 
