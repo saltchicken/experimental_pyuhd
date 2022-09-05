@@ -1,7 +1,6 @@
 from scipy.fft import fft, fftfreq, fftshift
 from scipy.signal import butter, lfilter
 from numpy import abs as np_abs
-
 def get_fft(samples):
     fft_result = fft(samples)
     fft_result = np_abs(fftshift(fft_result))
