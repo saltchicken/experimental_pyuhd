@@ -9,14 +9,12 @@ from multiprocessing.sharedctypes import Value
 from ctypes import c_double
 
 from stream_process import run_sdr
-from utils import get_fft, fftshift, fftfreq, butter_lowpass_filter
+from utils import get_fft, set_xf, butter_lowpass_filter
 
 import argparse
 
 NUM_SAMPS = 1600
 MAX_QUEUE_SIZE = 50
-
-
 
 def fft_process(q, quit):
     window = windows.hann(NUM_SAMPS)
@@ -52,9 +50,8 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             self.threshold = 1.0
             self.threshold_line = ax.axhline(self.threshold, 0, 1)
             self.threshold_line.set_visible(False)
-            self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
+            self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
             
-            self.ax.set_xlim(min(self.xf), max(self.xf))
             self.ax.set_ylim(-1, 6)
 
         def start(self, event):
@@ -68,8 +65,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             if freq != '':
                 self.center_freq.value = float(freq)
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
-                self.ax.set_xlim(min(self.xf), max(self.xf))
+                self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
         
         def change_gain(self, gain):
             self.gain.value = int(gain)
@@ -79,13 +75,11 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             if event.key == "right":
                 self.center_freq.value += 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
-                self.ax.set_xlim(min(self.xf), max(self.xf))
+                self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
             elif event.key == "left":
                 self.center_freq.value -= 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
-                self.ax.set_xlim(min(self.xf), max(self.xf))
+                self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
         
         def threshold_clicked(self, label):
             if label == "On":
