@@ -13,11 +13,10 @@ from utils import get_fft, set_xf, butter_lowpass_filter
 
 import argparse
 
-NUM_SAMPS = 1600
 MAX_QUEUE_SIZE = 50
 
-def fft_process(q, quit):
-    window = windows.hann(NUM_SAMPS)
+def fft_process(q, quit, fft_size):
+    window = windows.hann(fft_size)
     while quit.is_set() is False:
         try:
             data = q.get()
@@ -27,9 +26,9 @@ def fft_process(q, quit):
             # Downsample
             # ratio = 2
             # data = data[::ratio]
-            data.resize(data.size//NUM_SAMPS, NUM_SAMPS)
-            for i in range(data.size//NUM_SAMPS):
-                data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] = get_fft(data[i * NUM_SAMPS: (i + 1) * NUM_SAMPS] * window)
+            data.resize(data.size//fft_size, fft_size)
+            for i in range(data.size//fft_size):
+                data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
             data = data.mean(axis=0)
             try:
                 output_q.put_nowait(data)
@@ -39,7 +38,7 @@ def fft_process(q, quit):
             pass
     print("FFT closed")
 
-def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
+def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_size):
     class Index:
         def __init__(self, ax, quit, update_params):
             self.ax = ax
@@ -50,7 +49,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             self.threshold = 1.0
             self.threshold_line = ax.axhline(self.threshold, 0, 1)
             self.threshold_line.set_visible(False)
-            self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
+            self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
             
             self.ax.set_ylim(-1, 6)
 
@@ -65,7 +64,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             if freq != '':
                 self.center_freq.value = float(freq)
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
+                self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
         
         def change_gain(self, gain):
             self.gain.value = int(gain)
@@ -75,11 +74,11 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             if event.key == "right":
                 self.center_freq.value += 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
+                self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
             elif event.key == "left":
                 self.center_freq.value -= 100000.0
                 self.update_params.put(("freq", self.center_freq.value))
-                self.xf = set_xf(self.ax, NUM_SAMPS, rate.value, center_freq.value)
+                self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
         
         def threshold_clicked(self, label):
             if label == "On":
@@ -96,7 +95,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
                 while not output_q.empty(): 
                     data = output_q.get()
                 data = data.astype("complex64")
-                # yf = get_fft(data[-NUM_SAMPS:] * window)
+                # yf = get_fft(data[-fft_size:] * window)
                 # print("FFT analysis took {:.4f} seconds".format(toc-tic))
                 # TODO Fix Complex Error warning
                 peaks, _ = find_peaks(data, height=self.threshold)
@@ -152,6 +151,7 @@ def parse_args():
     # parser.add_argument("-d", "--duration", default=5.0, type=float)
     # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
     parser.add_argument("-g", "--gain", default=0, type=int)
+    parser.add_argument("--fft_size", default=1600, type=int)
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -166,13 +166,14 @@ if __name__ == "__main__":
     center_freq = Value(c_double, args.freq)
     gain = Value('i', args.gain)
     rate = Value(c_double, args.rate)
+    fft_size = args.fft_size
     
-    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, rate, center_freq, gain))
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, rate, center_freq, gain, fft_size))
     run_matplotlib_process.start()
 
-    run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit))
+    run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit, fft_size))
     run_FFT_process.start()
-    run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit))
+    run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit, fft_size))
     run_FFT_process2.start()
 
     run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, rate, center_freq, gain, "uhd"))

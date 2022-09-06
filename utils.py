@@ -7,8 +7,8 @@ def get_fft(samples):
     fft_result = np_abs(fftshift(fft_result))
     return fft_result
 
-def set_xf(ax, num_samps, rate, center_freq):
-    xf = fftshift(fftfreq(num_samps, 1 / rate) + float(center_freq))
+def set_xf(ax, fft_size, rate, center_freq):
+    xf = fftshift(fftfreq(fft_size, 1 / rate) + float(center_freq))
     ax.set_xlim(min(xf), max(xf))
     return xf
 
