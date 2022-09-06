@@ -53,12 +53,12 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_
             
             self.ax.set_ylim(-1, 6)
 
-        def start(self, event):
-            # Not implemented
-            pass
+        # def start(self, event):
+        #     # Not implemented
+        #     pass
         
-        def stop(self, event):
-            self.quit.set()
+        # def stop(self, event):
+        #     self.quit.set()
         
         def change_freq(self, freq):
             if freq != '':
@@ -115,23 +115,23 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_
 
     callback = Index(ax, quit, update_params)
 
-    axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
-    bstop = Button(axstop, 'Stop')
-    bstop.on_clicked(callback.stop)
+    # axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
+    # bstop = Button(axstop, 'Stop')
+    # bstop.on_clicked(callback.stop)
 
     axtext = plt.axes([0.1, 0.05, 0.3, 0.02])
     text_box = TextBox(axtext, "Center_Freq", textalignment="center")
     text_box.on_submit(callback.change_freq)
 
-    axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
-    gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=gain.value, orientation="vertical")
+    ax_gain_slider = plt.axes([0.02, 0.25, 0.0225, 0.63])
+    gain_slider = Slider(ax=ax_gain_slider, label="Gain", valmin=0, valmax=50, valinit=gain.value, orientation="vertical")
     gain_slider.on_changed(callback.change_gain)
     
-    ax_threshold_slider = plt.axes([0.15, 0.25, 0.0225, 0.63])
+    ax_threshold_slider = plt.axes([0.075, 0.25, 0.0225, 0.63])
     threshold_slider = Slider(ax=ax_threshold_slider, label="Threshold", valmin=0, valmax=6, valinit=callback.threshold, orientation="vertical")
     threshold_slider.on_changed(callback.change_threshold)
 
-    ax_threshold_radio = plt.axes([0.05, 0.4, 0.15, 0.15])
+    ax_threshold_radio = plt.axes([0.07, 0.15, 0.03, 0.05])
     threshold_radio = RadioButtons(ax_threshold_radio, ("On", "Off"), 1)
     threshold_radio.on_clicked(callback.threshold_clicked)
 
