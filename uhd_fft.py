@@ -95,12 +95,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
 
         def change_threshold(self, threshold):
             self.threshold = threshold
-            # print(self.threshold_line.properties())
-            # print(self.threshold_line.get_data())
-            
-            # TODO Modify existing self.threshold_line
-            self.threshold_line.remove()
-            self.threshold_line = ax.axhline(self.threshold, 0, 1)
+            self.threshold_line.set_ydata([self.threshold, self.threshold])
 
         def update(self, frame, fft_line, peak_graph):
             try:
