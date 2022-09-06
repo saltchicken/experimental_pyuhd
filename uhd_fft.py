@@ -13,8 +13,6 @@ from utils import get_fft, set_xf, butter_lowpass_filter
 
 import argparse
 
-MAX_QUEUE_SIZE = 50
-
 def fft_process(q, quit, fft_size):
     window = windows.hann(fft_size)
     while quit.is_set() is False:
@@ -158,10 +156,10 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    q = multiprocessing.Queue( MAX_QUEUE_SIZE )
+    q = multiprocessing.Queue(8)
     quit = multiprocessing.Event()
     update_params = multiprocessing.Queue(1)
-    output_q = multiprocessing.Queue(10)
+    output_q = multiprocessing.Queue(8)
 
     center_freq = Value(c_double, args.freq)
     gain = Value('i', args.gain)
@@ -170,11 +168,13 @@ if __name__ == "__main__":
     
     run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, rate, center_freq, gain, fft_size))
     run_matplotlib_process.start()
+    
+    fft_process_list = []
+    for _ in range(4):
+        fft_process_list.append(multiprocessing.Process(None, fft_process, args=(q, quit, fft_size)))
 
-    run_FFT_process=multiprocessing.Process(None, fft_process, args=(q, quit, fft_size))
-    run_FFT_process.start()
-    run_FFT_process2=multiprocessing.Process(None, fft_process, args=(q, quit, fft_size))
-    run_FFT_process2.start()
+    for proc in fft_process_list:
+        proc.start()
 
     run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, rate, center_freq, gain, "uhd"))
     run_sdr_process.start()
@@ -186,12 +186,12 @@ if __name__ == "__main__":
     time.sleep(1)
     run_matplotlib_process.terminate()
     run_sdr_process.terminate()
-    run_FFT_process.terminate()
-    run_FFT_process2.terminate()
+    for proc in fft_process_list:
+        proc.terminate()
     run_matplotlib_process.join()
     run_sdr_process.join()
-    run_FFT_process.join()
-    run_FFT_process2.join()
+    for proc in fft_process_list:
+        proc.join()
     q.close()
     output_q.close()
     update_params.close()
