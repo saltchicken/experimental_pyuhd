@@ -49,7 +49,9 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             self.update_params = update_params
             self.center_freq = center_freq
             self.gain = gain
-            self.threshold_line = None
+            self.threshold = 1.0
+            self.threshold_line = ax.axhline(self.threshold, 0, 1)
+            self.threshold_line.set_visible(False)
             self.xf = fftshift(fftfreq(NUM_SAMPS, 1 / rate.value) + float(center_freq.value))
             
             self.ax.set_xlim(min(self.xf), max(self.xf))
@@ -87,9 +89,16 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
         
         def threshold_clicked(self, label):
             if label == "On":
-                self.threshold_line = ax.axhline(1, 0, 100000000000.0)
+                self.threshold_line.set_visible(True)
             else:
-                self.threshold_line.remove()
+                self.threshold_line.set_visible(False)
+
+        def change_threshold(self, threshold):
+            self.threshold = threshold
+            # print(self.threshold_line.properties())
+            # print(self.threshold_line.get_data())
+            self.threshold_line.remove()
+            self.threshold_line = ax.axhline(self.threshold, 0, 1)
 
         def update(self, frame, fft_line, peak_graph):
             try:
@@ -98,7 +107,8 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
                 data = data.astype("complex64")
                 # yf = get_fft(data[-NUM_SAMPS:] * window)
                 # print("FFT analysis took {:.4f} seconds".format(toc-tic))
-                peaks, _ = find_peaks(data, height=1)
+                # TODO Fix Complex Error warning
+                peaks, _ = find_peaks(data, height=self.threshold)
                 # results_half = peak_widths(data, peaks, rel_height=0.5)
 
                 fft_line.set_data(self.xf, data)
@@ -126,6 +136,10 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
     axgain = plt.axes([0.1, 0.25, 0.0225, 0.63])
     gain_slider = Slider(ax=axgain, label="Gain", valmin=0, valmax=50, valinit=gain.value, orientation="vertical")
     gain_slider.on_changed(callback.change_gain)
+    
+    ax_threshold_slider = plt.axes([0.15, 0.25, 0.0225, 0.63])
+    threshold_slider = Slider(ax=ax_threshold_slider, label="Threshold", valmin=0, valmax=6, valinit=callback.threshold, orientation="vertical")
+    threshold_slider.on_changed(callback.change_threshold)
 
     ax_threshold_radio = plt.axes([0.05, 0.4, 0.15, 0.15])
     threshold_radio = RadioButtons(ax_threshold_radio, ("On", "Off"), 1)
