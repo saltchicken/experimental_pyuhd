@@ -97,6 +97,8 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain):
             self.threshold = threshold
             # print(self.threshold_line.properties())
             # print(self.threshold_line.get_data())
+            
+            # TODO Modify existing self.threshold_line
             self.threshold_line.remove()
             self.threshold_line = ax.axhline(self.threshold, 0, 1)
 
