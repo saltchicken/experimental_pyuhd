@@ -66,16 +66,16 @@ def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, 
         
         def change_gain(self, gain):
             self.gain.value = int(gain)
-            self.update_params.put(("gain", self.gain.value))
+            self.update_params.set()
         
         def on_press(self, event):
             if event.key == "right":
                 self.center_freq.value += 100000.0
-                self.update_params.put(("freq", self.center_freq.value))
+                self.update_params.set()
                 self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
             elif event.key == "left":
                 self.center_freq.value -= 100000.0
-                self.update_params.put(("freq", self.center_freq.value))
+                self.update_params.set()
                 self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
         
         def threshold_clicked(self, label):
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     sdr_queue = multiprocessing.Queue(8)
     fft_queue = multiprocessing.Queue(8)
     quit = multiprocessing.Event()
-    update_params = multiprocessing.Queue(1)
+    update_params = multiprocessing.Event()
 
     center_freq = Value(c_double, args.freq)
     gain = Value('i', args.gain)
@@ -193,5 +193,4 @@ if __name__ == "__main__":
         proc.join()
     sdr_queue.close()
     fft_queue.close()
-    update_params.close()
     print("Cleaned everything")

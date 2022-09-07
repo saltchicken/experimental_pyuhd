@@ -41,31 +41,26 @@ def run_sdr(sdr_queue, quit, update_params, rate, center_freq, gain, device):
 
     
     while quit.is_set() is False:
-        if not update_params.empty():
-            param = update_params.get()
-            if param[0] == "freq":
-                if device == "uhd":
-                    usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(param[1]), 0)
-                    print(center_freq.value)
-                else:
-                    sdr.setFrequency(SOAPY_SDR_RX, 0, param[1])
-            elif param[0] == "gain":
-                if device == "uhd":
-                    usrp.set_rx_gain(param[1], 0)
-                else:
-                    sdr.setGain(SOAPY_SDR_RX, 0, param[1])
-        else:
-            for i in range(BUFFER_STRIDE):
-                if device == "uhd":
-                    streamer.recv(recv_buffer, metadata)
-                else:
-                    sr = sdr.readStream(rxStream, [recv_buffer], len(recv_buffer))
-                samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
-            try:
-                sdr_queue.put_nowait(samples)
-                QUEUE_WRITTEN += 1
-            except:
-                QUEUE_FULL += 1
+        if update_params.is_set():
+            if device == "uhd":
+                usrp.set_rx_freq(uhd.libpyuhd.types.tune_request(center_freq.value), 0)
+                usrp.set_rx_gain(gain.value, 0)
+            else:
+                sdr.setFrequency(SOAPY_SDR_RX, 0, center_freq.value)
+                sdr.setGain(SOAPY_SDR_RX, 0, gain.value)
+            update_params.clear()
+
+        for i in range(BUFFER_STRIDE):
+            if device == "uhd":
+                streamer.recv(recv_buffer, metadata)
+            else:
+                sr = sdr.readStream(rxStream, [recv_buffer], len(recv_buffer))
+            samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
+        try:
+            sdr_queue.put_nowait(samples)
+            QUEUE_WRITTEN += 1
+        except:
+            QUEUE_FULL += 1
 
     print("Queue was full: ", QUEUE_FULL)
     print("Queue was written: ", QUEUE_WRITTEN)
