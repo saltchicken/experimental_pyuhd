@@ -61,7 +61,7 @@ def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, 
         def change_freq(self, freq):
             if freq != '':
                 self.center_freq.value = float(freq)
-                self.update_params.put(("freq", self.center_freq.value))
+                self.update_params.set()
                 self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
         
         def change_gain(self, gain):
