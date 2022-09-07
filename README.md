@@ -12,6 +12,13 @@ make -j8
 sudo make install
 sudo ldconfig
 
+sudo uhd_images_downloader
+
+cd <install-path>/lib/uhd/utils
+sudo cp uhd-usrp.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
 #### Verify in Python
 import uhd
 If no errors, you are good to go
@@ -40,3 +47,5 @@ SoapySDRUtil --info
 Reference for HackRF: https://github.com/pothosware/SoapyHackRF/wiki#building-soapy-hack-rf
 
 ### PIP install required python modules
+sudo apt install python3-pip
+pip install matplotlib scipy
