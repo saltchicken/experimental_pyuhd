@@ -13,11 +13,11 @@ from utils import get_fft, set_xf, butter_lowpass_filter
 
 import argparse
 
-def fft_process(q, fft_queue, quit, fft_size):
+def fft_process(sdr_queue, fft_queue, quit, fft_size):
     window = windows.hann(fft_size)
     while quit.is_set() is False:
         try:
-            data = q.get()
+            data = sdr_queue.get()
             data = data.astype("complex64")
             # Low Pass Failter
             # data = butter_lowpass_filter(data, 300000, 20000000, 6)
