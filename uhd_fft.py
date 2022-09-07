@@ -13,7 +13,7 @@ from utils import get_fft, set_xf, butter_lowpass_filter
 
 import argparse
 
-def fft_process(q, quit, fft_size):
+def fft_process(q, fft_queue, quit, fft_size):
     window = windows.hann(fft_size)
     while quit.is_set() is False:
         try:
@@ -29,14 +29,14 @@ def fft_process(q, quit, fft_size):
                 data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
             data = data.mean(axis=0)
             try:
-                output_q.put_nowait(data)
+                fft_queue.put_nowait(data)
             except:
                 pass
         except:
             pass
     print("FFT closed")
 
-def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_size):
+def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, fft_size):
     class Index:
         def __init__(self, ax, quit, update_params):
             self.ax = ax
@@ -90,8 +90,8 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_
 
         def update(self, frame, fft_line, peak_graph):
             try:
-                while not output_q.empty(): 
-                    data = output_q.get()
+                while not fft_queue.empty(): 
+                    data = fft_queue.get()
                 data = data.astype("complex64")
                 # yf = get_fft(data[-fft_size:] * window)
                 # print("FFT analysis took {:.4f} seconds".format(toc-tic))
@@ -106,7 +106,6 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_
                 #print("error with update in plot_processing")
                 return fft_line, peak_graph
 
-    output_q = out_q
     fig, ax = plt.subplots(figsize=(12, 10))
     fft_line = plt.plot([], [], 'r')[0]
     peak_graph = plt.plot([], [], 'x')[0]
@@ -117,9 +116,9 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_
     # bstop = Button(axstop, 'Stop')
     # bstop.on_clicked(callback.stop)
 
-    axtext = plt.axes([0.1, 0.05, 0.3, 0.02])
-    text_box = TextBox(axtext, "Center_Freq", textalignment="center")
-    text_box.on_submit(callback.change_freq)
+    ax_center_freq_textbox = plt.axes([0.1, 0.05, 0.3, 0.02])
+    center_freq_textbox = TextBox(ax_center_freq_textbox, "Center_Freq", textalignment="center")
+    center_freq_textbox.on_submit(callback.change_freq)
 
     ax_gain_slider = plt.axes([0.02, 0.25, 0.0225, 0.63])
     gain_slider = Slider(ax=ax_gain_slider, label="Gain", valmin=0, valmax=50, valinit=gain.value, orientation="vertical")
@@ -142,7 +141,7 @@ def matplotlib_process(out_q, quit, update_params, rate, center_freq, gain, fft_
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--args", default="", type=str)
+    parser.add_argument("-a", "--args", default="uhd", type=str)
 	# parser.add_argument("-o", "--output-file", type=str, required=True)
     parser.add_argument("-f", "--freq", default=104900000, type=float)
     parser.add_argument("-r", "--rate", default=20e6, type=float)
@@ -156,27 +155,27 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    q = multiprocessing.Queue(8)
+    sdr_queue = multiprocessing.Queue(8)
+    fft_queue = multiprocessing.Queue(8)
     quit = multiprocessing.Event()
     update_params = multiprocessing.Queue(1)
-    output_q = multiprocessing.Queue(8)
 
     center_freq = Value(c_double, args.freq)
     gain = Value('i', args.gain)
     rate = Value(c_double, args.rate)
     fft_size = args.fft_size
     
-    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(output_q, quit, update_params, rate, center_freq, gain, fft_size))
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(fft_queue, quit, update_params, rate, center_freq, gain, fft_size))
     run_matplotlib_process.start()
     
     fft_process_list = []
     for _ in range(4):
-        fft_process_list.append(multiprocessing.Process(None, fft_process, args=(q, quit, fft_size)))
+        fft_process_list.append(multiprocessing.Process(None, fft_process, args=(sdr_queue, fft_queue, quit, fft_size)))
 
     for proc in fft_process_list:
         proc.start()
 
-    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(q, quit, update_params, rate, center_freq, gain, "uhd"))
+    run_sdr_process=multiprocessing.Process(None, run_sdr, args=(sdr_queue, quit, update_params, rate, center_freq, gain, args.args))
     run_sdr_process.start()
 
     while quit.is_set() is False:
@@ -192,7 +191,7 @@ if __name__ == "__main__":
     run_sdr_process.join()
     for proc in fft_process_list:
         proc.join()
-    q.close()
-    output_q.close()
+    sdr_queue.close()
+    fft_queue.close()
     update_params.close()
     print("Cleaned everything")

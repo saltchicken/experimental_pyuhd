@@ -7,7 +7,7 @@ import time
 NUM_RECV_FRAMES = 2040 
 BUFFER_STRIDE = 50 
  
-def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
+def run_sdr(sdr_queue, quit, update_params, rate, center_freq, gain, device):
     if device == "uhd": 
         usrp = uhd.usrp.MultiUSRP() 
         usrp.set_rx_rate(rate.value, 0) 
@@ -62,7 +62,7 @@ def run_sdr(q, quit, update_params, rate, center_freq, gain, device="lime",):
                     sr = sdr.readStream(rxStream, [recv_buffer], len(recv_buffer))
                 samples[i * NUM_RECV_FRAMES : (i + 1) * NUM_RECV_FRAMES] = recv_buffer
             try:
-                q.put_nowait(samples)
+                sdr_queue.put_nowait(samples)
                 QUEUE_WRITTEN += 1
             except:
                 QUEUE_FULL += 1
