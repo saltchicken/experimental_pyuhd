@@ -13,8 +13,12 @@ from utils import get_fft, set_xf, butter_lowpass_filter
 
 import argparse
 
+# def parse_data(i, data, fft_size, window):
+#     return get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
+
 def fft_process(sdr_queue, fft_queue, quit, fft_size):
     window = windows.hann(fft_size)
+#    pool = multiprocessing.Pool(processes=2)
     while quit.is_set() is False:
         try:
             data = sdr_queue.get()
@@ -25,6 +29,7 @@ def fft_process(sdr_queue, fft_queue, quit, fft_size):
             # ratio = 2
             # data = data[::ratio]
             data.resize(data.size//fft_size, fft_size)
+            # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
             for i in range(data.size//fft_size):
                 data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
             data = data.mean(axis=0)
@@ -168,9 +173,7 @@ if __name__ == "__main__":
     run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(fft_queue, quit, update_params, rate, center_freq, gain, fft_size))
     run_matplotlib_process.start()
     
-    fft_process_list = []
-    for _ in range(4):
-        fft_process_list.append(multiprocessing.Process(None, fft_process, args=(sdr_queue, fft_queue, quit, fft_size)))
+    fft_process_list = [multiprocessing.Process(None, fft_process, args=(sdr_queue, fft_queue, quit, fft_size)) for _ in range(4)]
 
     for proc in fft_process_list:
         proc.start()
