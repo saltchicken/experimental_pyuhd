@@ -11,13 +11,32 @@ from ctypes import c_double
 from stream_process import run_sdr
 from utils import get_fft, set_xf, butter_lowpass_filter
 
+import numpy as np
 import argparse
 
 # def parse_data(i, data, fft_size, window):
 #     return get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
+class SignalGen():
+    def __init__(self, fs):
+        self.fs = fs
+        self.index = 0
+        self.step = 1.0 / fs
+    def slice(self, freq, size):
+        beg_i = self.index * self.step
+        end_i = self.index * self.step + size * self.step
+        x = np.linspace(beg_i, end_i, int((end_i - beg_i) / self.step))
+        result = np.cos(x * np.pi * 2 * freq) + 1j*np.sin(x * np.pi * 2 * freq)
+        # print(result)
+        self.index += size
+        # print(result.size)
+        # print(self.index)
+        if self.index > 20000:
+            self.index = 0
+        return result
 
 def fft_process(sdr_queue, fft_queue, quit, fft_size):
     window = windows.hann(fft_size)
+    sig = SignalGen(20000000)
 #    pool = multiprocessing.Pool(processes=2)
     while quit.is_set() is False:
         try:
@@ -31,7 +50,8 @@ def fft_process(sdr_queue, fft_queue, quit, fft_size):
             data.resize(data.size//fft_size, fft_size)
             # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
             for i in range(data.size//fft_size):
-                data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
+                mod_sig = sig.slice(700000, fft_size)
+                data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window / mod_sig)
             data = data.mean(axis=0)
             try:
                 fft_queue.put_nowait(data)

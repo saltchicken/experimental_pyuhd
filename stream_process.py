@@ -6,7 +6,10 @@ import time
   
 NUM_RECV_FRAMES = 2040 
 BUFFER_STRIDE = 50 
- 
+
+
+
+
 def run_sdr(sdr_queue, quit, update_params, rate, center_freq, gain, device):
     if device == "uhd": 
         usrp = uhd.usrp.MultiUSRP() 
