@@ -148,7 +148,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--args", default="uhd", type=str)
 	# parser.add_argument("-o", "--output-file", type=str, required=True)
-    parser.add_argument("-f", "--freq", default=104900000, type=float)
+    parser.add_argument("-f", "--freq", default=105000000, type=float)
     parser.add_argument("-r", "--rate", default=20e6, type=float)
     # parser.add_argument("-d", "--duration", default=5.0, type=float)
     # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
