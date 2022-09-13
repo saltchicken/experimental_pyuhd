@@ -14,8 +14,10 @@ from utils import get_fft, set_xf, butter_lowpass_filter
 import numpy as np
 import argparse
 
-# def parse_data(i, data, fft_size, window):
-#     return get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
+import copy
+
+DOWNSAMPLE = 4
+
 class SignalGen():
     def __init__(self, fs):
         self.fs = fs
@@ -24,39 +26,42 @@ class SignalGen():
     def slice(self, freq, size):
         beg_i = self.index * self.step
         end_i = self.index * self.step + size * self.step
-        x = np.linspace(beg_i, end_i, int((end_i - beg_i) / self.step))
+        x = np.linspace(beg_i, end_i, 2000)
         result = np.cos(x * np.pi * 2 * freq) + 1j*np.sin(x * np.pi * 2 * freq)
-        # print(result)
         self.index += size
         # print(result.size)
         # print(self.index)
-        if self.index > 20000:
+        if self.index > 200000:
             self.index = 0
         return result
 
 def fft_process(sdr_queue, fft_queue, quit, fft_size):
     window = windows.hann(fft_size)
-    sig = SignalGen(20000000)
+    sig = SignalGen(20000000 // DOWNSAMPLE)
 #    pool = multiprocessing.Pool(processes=2)
     while quit.is_set() is False:
         try:
             data = sdr_queue.get()
-            data = data.astype("complex64")
-            # Low Pass Failter
-            # data = butter_lowpass_filter(data, 300000, 20000000, 6)
-            # Downsample
-            # ratio = 2
-            # data = data[::ratio]
-            data.resize(data.size//fft_size, fft_size)
-            # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
-            for i in range(data.size//fft_size):
-                mod_sig = sig.slice(700000, fft_size)
-                data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window / mod_sig)
-            data = data.mean(axis=0)
-            try:
-                fft_queue.put_nowait(data)
-            except:
-                pass
+        except:
+            continue
+        data = data.astype("complex64")
+        # Low Pass Failter
+        # data = butter_lowpass_filter(data, 300000, 20000000, 6)
+        data = data[::DOWNSAMPLE]
+        extra_samps = data.size % fft_size
+        if extra_samps:
+            data = data[:-extra_samps]
+        data = data.reshape(data.size//fft_size, fft_size)
+        # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
+        # data = data[:, ::DOWNSAMPLE]
+
+        for i in range(data.shape[0]):
+            mod_sig = sig.slice(700000, fft_size)
+            data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window / mod_sig)
+
+        data = data.mean(axis=0)
+        try:
+            fft_queue.put_nowait(data)
         except:
             pass
     print("FFT closed")
@@ -72,7 +77,7 @@ def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, 
             self.threshold = 1.0
             self.threshold_line = ax.axhline(self.threshold, 0, 1)
             self.threshold_line.set_visible(False)
-            self.xf = set_xf(self.ax, fft_size, rate.value, center_freq.value)
+            self.xf = set_xf(self.ax, fft_size, rate.value // DOWNSAMPLE, center_freq.value)
             
             self.ax.set_ylim(-1, 6)
 
@@ -173,7 +178,7 @@ def parse_args():
     # parser.add_argument("-d", "--duration", default=5.0, type=float)
     # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
     parser.add_argument("-g", "--gain", default=0, type=int)
-    parser.add_argument("--fft_size", default=1600, type=int)
+    parser.add_argument("--fft_size", default=2000, type=int)
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -193,7 +198,7 @@ if __name__ == "__main__":
     run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(fft_queue, quit, update_params, rate, center_freq, gain, fft_size))
     run_matplotlib_process.start()
     
-    fft_process_list = [multiprocessing.Process(None, fft_process, args=(sdr_queue, fft_queue, quit, fft_size)) for _ in range(4)]
+    fft_process_list = [multiprocessing.Process(None, fft_process, args=(sdr_queue, fft_queue, quit, fft_size)) for _ in range(1)]
 
     for proc in fft_process_list:
         proc.start()
