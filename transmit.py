@@ -11,6 +11,7 @@ import SoapySDR
 from SoapySDR import SOAPY_SDR_TX, SOAPY_SDR_CS16, errToStr
 from scipy.signal import butter, lfilter, resample_poly
 from scipy.io.wavfile import read
+from utils import SignalGen
 
 def butter_lowpass(cutoff, fs, order=5):
     return butter(order, cutoff, fs=fs, btype='low', analog=False)
@@ -37,49 +38,6 @@ def make_tone(n, fcen, fs, phi=0.285):
     sig_int16[1::2] = 32767 * sig_cplx.imag
     return sig_int16
 
-class SignalGen():
-    def __init__(self, fs):
-        self.fs = fs
-        self.index = 0
-        self.step = 1.0 / fs
-        self.amp = 1.0
-        # self.audio_samp, data = read("voice.wav")
-        # self.audio = np.array(data, dtype=float)
-        # print(max(self.audio[:, 0]))
-        # self.audio = self.audio / 20000 - 0.5
-        # print(self.audio)
-        # self.audio = resample_poly(self.audio, 20, 1)
-    def slice(self, freq, size):
-        beg_i = self.index * self.step
-        end_i = self.index * self.step + size * self.step
-        # print(self.audio[:, 0][self.index:self.index + size].size)
-        x = np.linspace(beg_i, end_i, int((end_i - beg_i) / self.step))
-        # result = np.cos(self.audio[:, 0][self.index:self.index + size]) + 1j*np.sin(self.audio[:, 0][self.index:self.index + size])
-        result = np.cos(x * np.pi * 2 * freq * 1) + 1j*np.sin(x * np.pi * 2 * freq * 1)
-        # result = np.cos(x * np.pi * 2 * freq) + 1j*np.zeros(len(x))
-        # result = np.zeros(len(x)) + 1j*np.zeros(len(x))
-        # result = np.ones(len(x)) + 1j*np.zeros(len(x))
-        # result = np.ones(len(x)) + 1j*np.ones(len(x))
-        # result = np.zeros(len(x)) + 1j*np.ones(len(x))
-        result *= self.amp
-        # result = butter_lowpass_filter(result, 100, self.fs, 6)
-
-        # if self.index % 2000000 < 1000000:
-        #     # result = np.zeros(len(x)) + 1j*np.zeros(len(x))
-        #     result = np.cos(x * np.pi * 2 * freq * 10) + 1j*np.sin(x * np.pi * 2 * freq * 10)
-
-
-        # print(self.audio[:, 0].size)
-        # print(self.audio[:, 1].size)
-        # print(result)
-
-        self.index += size
-        # TODO why is self.audio.size double the array
-        # print(self.audio.size)
-        # if self.index >= self.audio[:, 0].size - 16384:
-        #     self.index = 0
-        # print("Index: " + str(self.index))
-        return result
 
 
 def transmit_tone(freq, chan=0, fs=2e6, gain=20, buff_len=16384, sig_freq=0):
