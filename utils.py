@@ -21,18 +21,20 @@ def butter_lowpass_filter(data, cutoff, fs, order=5):
     return y
 
 class SignalGen():
-    def __init__(self, fs):
+    def __init__(self, freq, fs):
         self.fs = fs
         self.index = 0
         self.step = 1.0 / fs
-    def slice(self, freq, size):
+        self.freq = freq
+        self.repeat_index = (1 / freq) * fs
+        if self.repeat_index != int(self.repeat_index):
+            print("WARNING: Frequency is not perfect divisor of sample rate")
+    def slice(self, size):
         beg_i = self.index * self.step
         end_i = self.index * self.step + size * self.step
-        x = np.linspace(beg_i, end_i, 2000)
-        result = np.cos(x * np.pi * 2 * freq) + 1j*np.sin(x * np.pi * 2 * freq)
+        x = np.linspace(beg_i, end_i - self.step, size)
+        result = np.cos(x * np.pi * 2 * self.freq) + 1j*np.sin(x * np.pi * 2 * self.freq)
         self.index += size
-        # print(result.size)
-        # print(self.index)
-        if self.index > 200000:
-            self.index = 0
+        if self.index >= self.repeat_index:
+            self.index = self.index % self.repeat_index
         return result

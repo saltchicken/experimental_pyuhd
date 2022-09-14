@@ -21,7 +21,7 @@ DOWNSAMPLE = 4
 
 def fft_process(sdr_queue, fft_queue, quit, fft_size):
     window = windows.hann(fft_size)
-    sig = SignalGen(20000000 // DOWNSAMPLE)
+    sig = SignalGen(700000, 20000000 // DOWNSAMPLE)
 #    pool = multiprocessing.Pool(processes=2)
     while quit.is_set() is False:
         try:
@@ -40,7 +40,7 @@ def fft_process(sdr_queue, fft_queue, quit, fft_size):
         # data = data[:, ::DOWNSAMPLE]
 
         for i in range(data.shape[0]):
-            mod_sig = sig.slice(700000, fft_size)
+            mod_sig = sig.slice(fft_size)
             data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window / mod_sig)
 
         data = data.mean(axis=0)
