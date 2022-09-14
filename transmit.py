@@ -34,8 +34,8 @@ def make_tone(n, fcen, fs, phi=0.285):
     sig_cplx = np.exp(1j * (wt + phi))
     # Convert to interleaved int16 values
     sig_int16 = np.empty(2 * n, dtype=np.int16)
-    sig_int16[0::2] = 32767 * sig_cplx.real
-    sig_int16[1::2] = 32767 * sig_cplx.imag
+    sig_int16[0::2] = 32767 / 4 * sig_cplx.real
+    sig_int16[1::2] = 32767 / 4 * sig_cplx.imag
     return sig_int16
 
 
@@ -43,9 +43,11 @@ def make_tone(n, fcen, fs, phi=0.285):
 def transmit_tone(freq, chan=0, fs=2e6, gain=20, buff_len=16384, sig_freq=0):
     sig = SignalGen(sig_freq, fs)
 
-    # bb_freq = fs / 8  # baseband frequency of tone
-    # tx_buff = make_tone(buff_len, bb_freq, fs)
-    # lo_freq = freq - bb_freq  # Calc LO freq to put tone at tone_rf
+    bb_freq = fs / 8  # baseband frequency of tone
+    tx_buff = make_tone(buff_len, bb_freq, fs)
+    # tx_buff2 = make_tone(buff_len, bb_freq / 2, fs)
+    # tx_buff = tx_buff + tx_buff2
+    lo_freq = freq - bb_freq  # Calc LO freq to put tone at tone_rf
 
     # Setup Radio
     args = dict(driver="hackrf")
@@ -61,7 +63,7 @@ def transmit_tone(freq, chan=0, fs=2e6, gain=20, buff_len=16384, sig_freq=0):
     print('Now Transmitting')
     while True:
         try:
-            tx_buff = sig.slice(buff_len)
+            # tx_buff = sig.slice(buff_len)
             rc = sdr.writeStream(tx_stream, [tx_buff], buff_len)
             if rc.ret != buff_len:
                 print('TX Error {}: {}'.format(rc.ret, errToStr(rc.ret)))
