@@ -16,7 +16,7 @@ import argparse
 
 import copy
 
-DOWNSAMPLE = 4
+DOWNSAMPLE = 1
 
 
 def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft_size):
@@ -39,13 +39,16 @@ def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft
         extra_samps = data.size % fft_size
         if extra_samps:
             data = data[:-extra_samps]
+        mod_sig = sig.slice(data.size)
+        data = data / mod_sig
         data = data.reshape(data.size//fft_size, fft_size)
+
+
         # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
         # data = data[:, ::DOWNSAMPLE]
 
         for i in range(data.shape[0]):
-            mod_sig = sig.slice(fft_size)
-            data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window / mod_sig)
+            data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
 
         data = data.mean(axis=0)
         try:
