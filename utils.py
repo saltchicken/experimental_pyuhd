@@ -26,7 +26,9 @@ class SignalGen():
         self.index = 0
         self.step = 1.0 / fs
         self.freq = freq
-        self.repeat_index = (1 / freq) * fs
+        if freq:
+            self.repeat_index = (1 / freq) * fs
+        else: self.repeat_index = 1
         if self.repeat_index != int(self.repeat_index):
             print("WARNING: Frequency is not perfect divisor of sample rate")
     def slice(self, size):

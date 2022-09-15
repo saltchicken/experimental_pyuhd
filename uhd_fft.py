@@ -19,11 +19,15 @@ import copy
 DOWNSAMPLE = 4
 
 
-def fft_process(sdr_queue, fft_queue, quit, fft_size):
+def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft_size):
     window = windows.hann(fft_size)
-    sig = SignalGen(700000, 20000000 // DOWNSAMPLE)
+    sig = SignalGen(0, 20000000 // DOWNSAMPLE)
 #    pool = multiprocessing.Pool(processes=2)
     while quit.is_set() is False:
+        if update_offset_freq.is_set():
+            # print(offset_freq.value)
+            sig = SignalGen(offset_freq.value, 20000000 // DOWNSAMPLE)
+            update_offset_freq.clear()
         try:
             data = sdr_queue.get()
         except:
@@ -50,13 +54,15 @@ def fft_process(sdr_queue, fft_queue, quit, fft_size):
             pass
     print("FFT closed")
 
-def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, fft_size):
+def matplotlib_process(fft_queue, quit, update_params, update_offset_freq, rate, center_freq, offset_freq, gain, fft_size):
     class Index:
-        def __init__(self, ax, quit, update_params):
+        def __init__(self, ax, quit, update_params, update_offset_freq):
             self.ax = ax
             self.quit = quit
             self.update_params = update_params
+            self.update_offset_freq = update_offset_freq
             self.center_freq = center_freq
+            self.offset_freq = offset_freq
             self.gain = gain
             self.threshold = 1.0
             self.threshold_line = ax.axhline(self.threshold, 0, 1)
@@ -102,6 +108,11 @@ def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, 
             self.threshold = threshold
             self.threshold_line.set_ydata([self.threshold, self.threshold])
 
+        def change_offset_freq(self, freq):
+            if freq != '':
+                self.offset_freq.value = float(freq)
+                self.update_offset_freq.set()
+
         def update(self, frame, fft_line, peak_graph):
             try:
                 while not fft_queue.empty(): 
@@ -124,7 +135,7 @@ def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, 
     fft_line = plt.plot([], [], 'r')[0]
     peak_graph = plt.plot([], [], 'x')[0]
 
-    callback = Index(ax, quit, update_params)
+    callback = Index(ax, quit, update_params, update_offset_freq)
 
     # axstop = plt.axes([0.7, 0.0, 0.075, 0.02])
     # bstop = Button(axstop, 'Stop')
@@ -145,6 +156,10 @@ def matplotlib_process(fft_queue, quit, update_params, rate, center_freq, gain, 
     ax_threshold_radio = plt.axes([0.07, 0.15, 0.03, 0.05])
     threshold_radio = RadioButtons(ax_threshold_radio, ("On", "Off"), 1)
     threshold_radio.on_clicked(callback.threshold_clicked)
+
+    ax_offset_freq_slider = plt.axes([0.13, 0.25, 0.0225, 0.63])
+    offset_freq_slider = Slider(ax=ax_offset_freq_slider, label="Offset", valmin=-10000000, valmax=10000000, valinit=0, valstep=100000, orientation="vertical")
+    offset_freq_slider.on_changed(callback.change_offset_freq)
 
     fig.canvas.mpl_connect('key_press_event', callback.on_press)
 
@@ -173,16 +188,18 @@ if __name__ == "__main__":
     fft_queue = multiprocessing.Queue(8)
     quit = multiprocessing.Event()
     update_params = multiprocessing.Event()
+    update_offset_freq = multiprocessing.Event()
 
     center_freq = Value(c_double, args.freq)
+    offset_freq = Value(c_double, 0)
     gain = Value('i', args.gain)
     rate = Value(c_double, args.rate)
     fft_size = args.fft_size
     
-    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(fft_queue, quit, update_params, rate, center_freq, gain, fft_size))
+    run_matplotlib_process=multiprocessing.Process(None, matplotlib_process, args=(fft_queue, quit, update_params, update_offset_freq, rate, center_freq, offset_freq, gain, fft_size))
     run_matplotlib_process.start()
     
-    fft_process_list = [multiprocessing.Process(None, fft_process, args=(sdr_queue, fft_queue, quit, fft_size)) for _ in range(1)]
+    fft_process_list = [multiprocessing.Process(None, fft_process, args=(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft_size)) for _ in range(1)]
 
     for proc in fft_process_list:
         proc.start()
