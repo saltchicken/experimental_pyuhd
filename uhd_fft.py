@@ -16,12 +16,13 @@ import argparse
 
 import copy
 
-DOWNSAMPLE = 1
+DOWNSAMPLE = 4
 
 
 def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft_size):
     window = windows.hann(fft_size)
-    sig = SignalGen(0, 20000000 // DOWNSAMPLE)
+    sig = SignalGen(700000, 20000000 // DOWNSAMPLE)
+    # with open("file3.bin", "wb") as f:
 #    pool = multiprocessing.Pool(processes=2)
     while quit.is_set() is False:
         if update_offset_freq.is_set():
@@ -36,6 +37,7 @@ def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft
         # Low Pass Failter
         # data = butter_lowpass_filter(data, 300000, 20000000, 6)
         data = data[::DOWNSAMPLE]
+        # data.tofile(f)
         extra_samps = data.size % fft_size
         if extra_samps:
             data = data[:-extra_samps]
