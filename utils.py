@@ -2,6 +2,7 @@ from scipy.fft import fft, fftfreq, fftshift
 from scipy.signal import butter, lfilter
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
 def get_fft(samples):
     fft_result = fft(samples)
@@ -24,29 +25,22 @@ def butter_lowpass_filter(data, cutoff, fs, order=5):
 class SignalGen():
     def __init__(self, freq, fs):
         self.fs = fs
-        self.index = 0
-        self.step = 1.0 / fs
         self.freq = freq
+        self.index = 0
         if freq:
-            self.repeat_index = (1 / freq) * fs
-        else: self.repeat_index = 1
-        if self.repeat_index != int(self.repeat_index):
+            self.period = self.fs / self.freq
+        else: self.period = 1
+        if self.period != int(self.period):
             print("WARNING: Frequency is not perfect divisor of sample rate")
-        self.period = self.fs / self.freq
-
     def slice(self, size):
-        # beg_i = self.index * self.step
-        # end_i = self.index * self.step + size * self.step
-        # x = np.linspace(beg_i, end_i - self.step, size)
         phi = 0.0
-        # t = np.arange(size) / self.fs
-        wt = np.array(2 * np.pi * self.freq * np.arange(size) / self.fs, dtype=np.complex64)
-        result = np.exp(1j * (wt + phi))
+        wt = np.array(2 * np.pi * self.freq * np.arange(self.index, self.index + size) / self.fs, dtype=np.complex64)
+        sig_complex = np.exp(1j * (wt + phi))
         # result = np.cos(x * np.pi * 2 * self.freq) + 1j*np.sin(x * np.pi * 2 * self.freq)
         self.index += size
-        if self.index >= self.repeat_index:
-            self.index = self.index % self.repeat_index
-        return result
+        if self.index >= self.period:
+            self.index = self.index % math.ceil(self.period)
+        return sig_complex
 
 def show_signal():
     fig, ax = plt.subplots(figsize=(6,6))
@@ -61,11 +55,11 @@ def show_signal():
     # phi = 0.285
     phi = 0.0
     buff_len = int(math.ceil(period) )
-    print("buff_len ", buff_len, "period ", period)
+    # print("buff_len ", buff_len, "period ", period)
     # assert buff_len % period == 0, 'Total samples not integer number of periods'
     wt = np.array(2 * np.pi * fcen * np.arange(buff_len) / fs)
     sig_complex = np.exp(1j * (wt + phi))
-    print(sig_complex[0], sig_complex[-1])
+    # print(sig_complex[0], sig_complex[-1])
     sig_int16 = np.empty(2 * buff_len, dtype=np.int16)
     sig_int16[0::2] = 32767 / 4 * sig_complex.real
     sig_int16[1::2] = 32767 / 4 * sig_complex.imag
@@ -77,15 +71,16 @@ def show_signal():
     # tx_buff = tx_buff + tx_buff2  
       
     
-    sig = SignalGen(bb_freq, 20e6)
-    sig_slice = sig.slice(1600)
+    sig = SignalGen(20, 2000)
+    sig_slice = sig.slice(75)
+    test = np.concatenate((sig_slice, sig.slice(75)))
     # lo_freq = freq - bb_freq  # Calc LO freq to put tone at tnp.arange(buff_len)/fs
-    ax.plot( sig_slice.real )
-    ax.plot( sig_slice.imag )
+    ax.plot( test.real )
+    ax.plot( test.imag )
     plt.show()
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 #     sig = SignalGen(1000, 20e6)
 #     sig.slice(1000)
-    # show_signal()
+    show_signal()
