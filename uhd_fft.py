@@ -14,49 +14,46 @@ from utils import get_fft, set_xf, butter_lowpass_filter, SignalGen
 import numpy as np
 import argparse
 
-import copy
-
 DOWNSAMPLE = 4
-
 
 def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft_size):
     window = windows.hann(fft_size)
     sig = SignalGen(700000, 20000000 // DOWNSAMPLE)
-    # with open("file3.bin", "wb") as f:
+    # cos_file = open("cos_wave.iq", "rb")
+    # cos_data = cos_file.read(8 * 24000)
+    # cos_wave = np.frombuffer(cos_data, dtype=np.complex64)
+    with open("file.bin", "wb") as f:
 #    pool = multiprocessing.Pool(processes=2)
-    while quit.is_set() is False:
-        if update_offset_freq.is_set():
-            # print(offset_freq.value)
-            sig = SignalGen(offset_freq.value, 20000000 // DOWNSAMPLE)
-            update_offset_freq.clear()
-        try:
-            data = sdr_queue.get()
-        except:
-            continue
-        data = data.astype("complex64")
-        # Low Pass Failter
-        # data = butter_lowpass_filter(data, 300000, 20000000, 6)
-        data = data[::DOWNSAMPLE]
-        # data.tofile(f)
-        extra_samps = data.size % fft_size
-        if extra_samps:
-            data = data[:-extra_samps]
-        mod_sig = sig.slice(data.size)
-        data = data / mod_sig
-        data = data.reshape(data.size//fft_size, fft_size)
+        while quit.is_set() is False:
+            if update_offset_freq.is_set():
+                # print(offset_freq.value)
+                sig = SignalGen(offset_freq.value, 20000000 // DOWNSAMPLE)
+                update_offset_freq.clear()
+            try:
+                data = sdr_queue.get()
+            except:
+                continue
+            data = data.astype("complex64")
+            # Low Pass Failter
+            # data = butter_lowpass_filter(data, 300000, 20000000, 6)
+            data = data[::DOWNSAMPLE]
+            extra_samps = data.size % fft_size
+            if extra_samps:
+                data = data[:-extra_samps]
+            mod_sig = sig.slice(data.size)
+            data = data / mod_sig
+            data.tofile(f)
+            data = data.reshape(data.size//fft_size, fft_size)
 
+            # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
+            for i in range(data.shape[0]):
+                data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
 
-        # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
-        # data = data[:, ::DOWNSAMPLE]
-
-        for i in range(data.shape[0]):
-            data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
-
-        data = data.mean(axis=0)
-        try:
-            fft_queue.put_nowait(data)
-        except:
-            pass
+            data = data.mean(axis=0)
+            try:
+                fft_queue.put_nowait(data)
+            except:
+                pass
     print("FFT closed")
 
 def matplotlib_process(fft_queue, quit, update_params, update_offset_freq, rate, center_freq, offset_freq, gain, fft_size):
