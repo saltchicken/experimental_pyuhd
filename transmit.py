@@ -17,9 +17,6 @@ def transmit_tone(freq, chan=0, fs=2e6, gain=20, buff_len=16384, sig_freq=1000):
 
     bb_freq = fs / 8  # baseband frequency of tone
     sig = SignalGen(bb_freq, fs)
-    signal = sig.slice(buff_len)
-    tx_buff = sig.convert_slice_int(signal)
-    # tx_buff = make_tone(buff_len, bb_freq, fs)
     lo_freq = freq - bb_freq  # Calc LO freq to put tone at tone_rf
 
     # Setup Radio
@@ -36,7 +33,8 @@ def transmit_tone(freq, chan=0, fs=2e6, gain=20, buff_len=16384, sig_freq=1000):
     print('Now Transmitting')
     while True:
         try:
-            # tx_buff = sig.slice(buff_len)
+            signal = sig.slice(buff_len)
+            tx_buff = sig.convert_slice_int(signal)
             rc = sdr.writeStream(tx_stream, [tx_buff], buff_len)
             if rc.ret != buff_len:
                 print('TX Error {}: {}'.format(rc.ret, errToStr(rc.ret)))
