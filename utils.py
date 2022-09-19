@@ -41,6 +41,11 @@ class SignalGen():
         if self.index >= self.period:
             self.index = self.index % math.ceil(self.period)
         return sig_complex
+    def convert_slice_int(self, sig_complex):
+        sig_int16 = np.empty(2 * sig_complex.size, dtype=np.int16)
+        sig_int16[0::2] = 32767 / 4 * sig_complex.real
+        sig_int16[1::2] = 32767 / 4 * sig_complex.imag
+        return sig_int16
 
 def show_signal():
     fig, ax = plt.subplots(figsize=(6,6))
@@ -54,12 +59,11 @@ def show_signal():
 
     # phi = 0.285
     phi = 0.0
-    buff_len = int(math.ceil(period) )
+    buff_len = 3000
     # print("buff_len ", buff_len, "period ", period)
     # assert buff_len % period == 0, 'Total samples not integer number of periods'
     wt = np.array(2 * np.pi * fcen * np.arange(buff_len) / fs)
     sig_complex = np.exp(1j * (wt + phi))
-    # print(sig_complex[0], sig_complex[-1])
     sig_int16 = np.empty(2 * buff_len, dtype=np.int16)
     sig_int16[0::2] = 32767 / 4 * sig_complex.real
     sig_int16[1::2] = 32767 / 4 * sig_complex.imag
@@ -70,13 +74,15 @@ def show_signal():
     # tx_buff2 = make_tone(buff_len, bb_freq / 2, fs)
     # tx_buff = tx_buff + tx_buff2  
       
-    
-    sig = SignalGen(20, 2000)
-    sig_slice = sig.slice(75)
-    test = np.concatenate((sig_slice, sig.slice(75)))
     # lo_freq = freq - bb_freq  # Calc LO freq to put tone at tnp.arange(buff_len)/fs
-    ax.plot( test.real )
-    ax.plot( test.imag )
+    
+    # sig = SignalGen(20, 2000)
+    # sig_slice = sig.slice(75)
+    # test = np.concatenate((sig_slice, sig.slice(75)))
+    # ax.plot( test.real )
+    # ax.plot( test.imag )
+    ax.plot(sig_int16[0::2])
+    ax.plot(sig_int16[1::2])
     plt.show()
 
 
