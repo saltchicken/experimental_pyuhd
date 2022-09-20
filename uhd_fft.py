@@ -48,7 +48,8 @@ def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft
     # cos_file = open("cos_wave.iq", "rb")
     # cos_data = cos_file.read(8 * 24000)
     # cos_wave = np.frombuffer(cos_data, dtype=np.complex64)
-    with open("file.bin", "wb") as f:
+    title = dt.datetime.utcnow().isoformat()+'Z'
+    with open("{}.bin".format(title), "wb") as bin_file:
 #    pool = multiprocessing.Pool(processes=2)
         while quit.is_set() is False:
             if update_offset_freq.is_set():
@@ -68,7 +69,7 @@ def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft
                 data = data[:-extra_samps]
             mod_sig = sig.slice(data.size)
             data = data / mod_sig
-            data.tofile(f)
+            data.tofile(bin_file)
             data = data.reshape(data.size//fft_size, fft_size)
 
             # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
