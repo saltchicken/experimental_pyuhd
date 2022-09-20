@@ -24,8 +24,11 @@ from PyQt5 import Qt
 from gnuradio import qtgui
 from gnuradio.filter import firdes
 import sip
+from gnuradio import analog
+from gnuradio import audio
 from gnuradio import blocks
 import pmt
+from gnuradio import filter
 from gnuradio import gr
 from gnuradio.fft import window
 import sys
@@ -74,11 +77,16 @@ class test_iq(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.samp_rate = samp_rate = 20e6 / 4
+        self.samp_rate = samp_rate = 20e6 / 4 / 5 / 5
 
         ##################################################
         # Blocks
         ##################################################
+        self.rational_resampler_xxx_0 = filter.rational_resampler_ccc(
+                interpolation=1,
+                decimation=25,
+                taps=[],
+                fractional_bw=0)
         self.qtgui_time_sink_x_0 = qtgui.time_sink_c(
             2000, #size
             samp_rate, #samp_rate
@@ -174,13 +182,21 @@ class test_iq(gr.top_block, Qt.QWidget):
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
         self.blocks_file_source_0 = blocks.file_source(gr.sizeof_gr_complex*1, '/home/saltchicken/Desktop/experimental_pyuhd/file.bin', True, 0, 0)
         self.blocks_file_source_0.set_begin_tag(pmt.PMT_NIL)
+        self.audio_sink_0 = audio.sink(48000, '', True)
+        self.analog_wfm_rcv_0 = analog.wfm_rcv(
+        	quad_rate=samp_rate,
+        	audio_decimation=8,
+        )
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.blocks_file_source_0, 0), (self.qtgui_freq_sink_x_0, 0))
-        self.connect((self.blocks_file_source_0, 0), (self.qtgui_time_sink_x_0, 0))
+        self.connect((self.analog_wfm_rcv_0, 0), (self.audio_sink_0, 0))
+        self.connect((self.blocks_file_source_0, 0), (self.rational_resampler_xxx_0, 0))
+        self.connect((self.rational_resampler_xxx_0, 0), (self.analog_wfm_rcv_0, 0))
+        self.connect((self.rational_resampler_xxx_0, 0), (self.qtgui_freq_sink_x_0, 0))
+        self.connect((self.rational_resampler_xxx_0, 0), (self.qtgui_time_sink_x_0, 0))
 
 
     def closeEvent(self, event):

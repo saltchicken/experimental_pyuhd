@@ -14,7 +14,33 @@ from utils import get_fft, set_xf, butter_lowpass_filter, SignalGen
 import numpy as np
 import argparse
 
+import datetime as dt
+import sigmf
+from sigmf import SigMFFile
+from sigmf.utils import get_data_type_str
+
 DOWNSAMPLE = 4
+
+def saveSigMF(data, sample_rate, freq, title, description=None):
+    # data.tofile('{}.sigmf-data'.format(title))
+    
+    meta = SIgMFFile(
+            data_file='{}.sigmf-data'.format(title),
+            global_info = {
+            SigMFFile.DATATYPE_KEY : get_data_type_str(data),
+            SigMFFile.SAMPLE_RATE_KEY: int(sample_rate),
+            SigMFFile.AUTHOR_KEY: "ANONYMOUS",
+            SigMFFile.DESCRIPTION_KEY: description,
+            SigMFFile.VERSION_KEY: sigmf.__version__,
+            }
+        )
+    meta.add_capture(0, metadata={
+        SigMFFile.FREQUENCY_KEY: freq,
+        SigMFFile.DATETIME_KEY: title,
+        # SigMFFile.DATETIME_KEY: dt.datetime.utcnow().isoformat()+'Z',
+        })
+    assert meta.validate()
+    meta.tofile('{}.sigmf-meta'.format(title))
 
 def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft_size):
     window = windows.hann(fft_size)

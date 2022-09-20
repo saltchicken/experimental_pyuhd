@@ -37,7 +37,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 20e6 / 4
+    value: 20e6 / 4 / 5 / 5
   states:
     bus_sink: false
     bus_source: false
@@ -45,6 +45,40 @@ blocks:
     coordinate: [184, 12]
     rotation: 0
     state: enabled
+- name: analog_wfm_rcv_0
+  id: analog_wfm_rcv
+  parameters:
+    affinity: ''
+    alias: ''
+    audio_decimation: '8'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    quad_rate: samp_rate
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [600, 140.0]
+    rotation: 0
+    state: true
+- name: audio_sink_0
+  id: audio_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    device_name: ''
+    num_inputs: '1'
+    ok_to_block: 'True'
+    samp_rate: '48000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [976, 148.0]
+    rotation: 0
+    state: true
 - name: blocks_file_source_0
   id: blocks_file_source
   parameters:
@@ -64,7 +98,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [248, 348.0]
+    coordinate: [120, 308.0]
     rotation: 0
     state: true
 - name: qtgui_freq_sink_x_0
@@ -245,6 +279,46 @@ blocks:
     coordinate: [800, 236.0]
     rotation: 0
     state: true
+- name: rational_resampler_xxx_0
+  id: rational_resampler_xxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    decim: '25'
+    fbw: '0'
+    interp: '1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    taps: '[]'
+    type: ccc
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [376, 244.0]
+    rotation: 0
+    state: true
+- name: rational_resampler_xxx_1
+  id: rational_resampler_xxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    decim: '50'
+    fbw: '0'
+    interp: '48'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    taps: '[]'
+    type: fff
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [784, 36.0]
+    rotation: 0
+    state: disabled
 - name: uhd_usrp_source_0
   id: uhd_usrp_source
   parameters:
@@ -683,8 +757,13 @@ blocks:
     state: disabled
 
 connections:
-- [blocks_file_source_0, '0', qtgui_freq_sink_x_0, '0']
-- [blocks_file_source_0, '0', qtgui_time_sink_x_0, '0']
+- [analog_wfm_rcv_0, '0', audio_sink_0, '0']
+- [analog_wfm_rcv_0, '0', rational_resampler_xxx_1, '0']
+- [blocks_file_source_0, '0', rational_resampler_xxx_0, '0']
+- [rational_resampler_xxx_0, '0', analog_wfm_rcv_0, '0']
+- [rational_resampler_xxx_0, '0', qtgui_freq_sink_x_0, '0']
+- [rational_resampler_xxx_0, '0', qtgui_time_sink_x_0, '0']
+- [rational_resampler_xxx_1, '0', audio_sink_0, '0']
 
 metadata:
   file_format: 1
