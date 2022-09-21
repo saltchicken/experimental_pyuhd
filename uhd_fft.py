@@ -70,15 +70,16 @@ def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft
             mod_sig = sig.slice(data.size)
             data = data / mod_sig
             data.tofile(bin_file)
-            data = data.reshape(data.size//fft_size, fft_size)
 
             # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
-            for i in range(data.shape[0]):
-                data[i * fft_size: (i + 1) * fft_size] = get_fft(data[i * fft_size: (i + 1) * fft_size] * window)
 
-            data = data.mean(axis=0)
+            data = data.reshape(data.size//fft_size, fft_size)
+            fft_data = np.zeros((data.shape[0], data.shape[1]))
+            for i, batch in enumerate(data):
+                fft_data[i] = get_fft(batch * window)
+            fft_data = fft_data.mean(axis=0)
             try:
-                fft_queue.put_nowait(data)
+                fft_queue.put_nowait(fft_data)
             except:
                 pass
     print("FFT closed")

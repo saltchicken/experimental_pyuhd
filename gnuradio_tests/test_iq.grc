@@ -50,7 +50,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    audio_decimation: '8'
+    audio_decimation: '4'
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -86,7 +86,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /home/saltchicken/Desktop/experimental_pyuhd/file.bin
+    file: /home/saltchicken/Desktop/experimental_pyuhd/2022-09-21T04:49:45.269179Z.bin
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -318,7 +318,7 @@ blocks:
     bus_structure: null
     coordinate: [784, 36.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: uhd_usrp_source_0
   id: uhd_usrp_source
   parameters:
@@ -757,7 +757,6 @@ blocks:
     state: disabled
 
 connections:
-- [analog_wfm_rcv_0, '0', audio_sink_0, '0']
 - [analog_wfm_rcv_0, '0', rational_resampler_xxx_1, '0']
 - [blocks_file_source_0, '0', rational_resampler_xxx_0, '0']
 - [rational_resampler_xxx_0, '0', analog_wfm_rcv_0, '0']
