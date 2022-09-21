@@ -4,8 +4,8 @@ import SoapySDR
 from SoapySDR import * #SOAPY_SDR_ constants
 import time 
   
-NUM_RECV_FRAMES = 2040 
-BUFFER_STRIDE = 50 
+NUM_RECV_FRAMES = 1000 # TODO Why is this working better than 2040 which is the max buff length
+BUFFER_STRIDE = 100 # TODO Why does keeping 100000 the product of these two variables the fastest.
 
 
 
