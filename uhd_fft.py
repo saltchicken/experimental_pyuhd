@@ -44,7 +44,7 @@ def saveSigMF(data, sample_rate, freq, title, description=None):
 
 def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft_size):
     window = windows.hann(fft_size)
-    sig = SignalGen(700000, 20000000 // DOWNSAMPLE)
+    sig = SignalGen(700000, 10000000)
     # cos_file = open("cos_wave.iq", "rb")
     # cos_data = cos_file.read(8 * 24000)
     # cos_wave = np.frombuffer(cos_data, dtype=np.complex64)
@@ -54,7 +54,7 @@ def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft
         while quit.is_set() is False:
             if update_offset_freq.is_set():
                 # print(offset_freq.value)
-                sig = SignalGen(offset_freq.value, 20000000 // DOWNSAMPLE)
+                sig = SignalGen(offset_freq.value, 10000000)
                 update_offset_freq.clear()
             try:
                 data = sdr_queue.get()
@@ -63,19 +63,23 @@ def fft_process(sdr_queue, fft_queue, quit, update_offset_freq, offset_freq, fft
             data = data.astype("complex64")
             # Low Pass Failter
             # data = butter_lowpass_filter(data, 300000, 20000000, 6)
-            data = data[::DOWNSAMPLE]
-            extra_samps = data.size % fft_size
-            if extra_samps:
-                data = data[:-extra_samps]
+            # data = data[::DOWNSAMPLE]
+            # extra_samps = data.size % fft_size
+            # if extra_samps:
+            #     data = data[:-extra_samps]
             mod_sig = sig.slice(data.size)
             data = data / mod_sig
-            data.tofile(bin_file)
+            data[::DOWNSAMPLE].tofile(bin_file)
 
             # result = [pool.apply(parse_data, args=(i, data, fft_size, window)) for i in range(data.size//fft_size)]
 
             data = data.reshape(data.size//fft_size, fft_size)
-            fft_data = np.zeros((data.shape[0], data.shape[1]))
+            # TODO Replace magic number of 3. How many rows to take for FFT
+            fft_data = np.zeros((3, data.shape[1]))
+            # fft_data = np.zeros((data.shape[0], data.shape[1]))
             for i, batch in enumerate(data):
+                if i == len(fft_data):
+                    break
                 fft_data[i] = get_fft(batch * window)
             fft_data = fft_data.mean(axis=0)
             try:
@@ -203,11 +207,11 @@ def parse_args():
     parser.add_argument("-a", "--args", default="uhd", type=str)
 	# parser.add_argument("-o", "--output-file", type=str, required=True)
     parser.add_argument("-f", "--freq", default=105000000, type=float)
-    parser.add_argument("-r", "--rate", default=20e6, type=float)
+    parser.add_argument("-r", "--rate", default=10e6, type=float)
     # parser.add_argument("-d", "--duration", default=5.0, type=float)
     # parser.add_argument("-c", "--channels", default=0, nargs="+", type=int)
     parser.add_argument("-g", "--gain", default=0, type=int)
-    parser.add_argument("--fft_size", default=2000, type=int)
+    parser.add_argument("--fft_size", default=1024, type=int)
     return parser.parse_args()
 
 if __name__ == "__main__":
